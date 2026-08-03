@@ -206,7 +206,7 @@ export default function QuizPage() {
     }
   }
 
-  function submitExam({
+  async function submitExam({
     endedEarly = false,
     skippedAtQuestion = null,
     answersOverride = null,
@@ -214,21 +214,29 @@ export default function QuizPage() {
     finalizeAwayTime()
     const leaves = focusLeavesRef.current
     const finalAnswers = answersOverride ?? answers
-    addSubmission({
-      id: crypto.randomUUID(),
-      name: name.trim() || 'Anonymous',
-      submittedAt: new Date().toISOString(),
-      endedEarly,
-      skippedAtQuestion,
-      answers: buildGradedAnswers(finalAnswers, {
+    try {
+      await addSubmission({
+        id: crypto.randomUUID(),
+        name: name.trim() || 'Anonymous',
+        submittedAt: new Date().toISOString(),
         endedEarly,
         skippedAtQuestion,
-      }),
-      focusLeaves: {
-        count: leaves.length,
-        events: leaves,
-      },
-    })
+        answers: buildGradedAnswers(finalAnswers, {
+          endedEarly,
+          skippedAtQuestion,
+        }),
+        focusLeaves: {
+          count: leaves.length,
+          events: leaves,
+        },
+      })
+    } catch (err) {
+      window.alert(
+        err?.message ||
+          'Could not save your answers to the server. Check your connection and try again.',
+      )
+      return
+    }
     setPhase('done')
   }
 
@@ -275,7 +283,7 @@ export default function QuizPage() {
     })
   }
 
-  function advanceFromCode() {
+  async function advanceFromCode() {
     if (!isCode || !codeEdited) return
     const ok = isCodeCorrect(current, codeValue)
     const nextAnswers = {
@@ -288,26 +296,26 @@ export default function QuizPage() {
     }
     setAnswers(nextAnswers)
     if (isLast) {
-      submitExam({ endedEarly: false, answersOverride: nextAnswers })
+      await submitExam({ endedEarly: false, answersOverride: nextAnswers })
       return
     }
     setIndex((i) => i + 1)
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (isCode) {
-      advanceFromCode()
+      await advanceFromCode()
       return
     }
     if (!canProceed) return
     if (isLast) {
-      submitExam({ endedEarly: false })
+      await submitExam({ endedEarly: false })
       return
     }
     setIndex((i) => i + 1)
   }
 
-  function handleSkip() {
+  async function handleSkip() {
     if (!isCode || codeEdited) return
     if (
       !window.confirm(
@@ -316,7 +324,7 @@ export default function QuizPage() {
     ) {
       return
     }
-    submitExam({ endedEarly: true, skippedAtQuestion: index + 1 })
+    await submitExam({ endedEarly: true, skippedAtQuestion: index + 1 })
   }
 
   function handleBack() {

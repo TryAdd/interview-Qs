@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ADMIN_PASSWORD } from '../data/questions'
 import { clearSubmissions, getSubmissions } from '../utils/storage'
 
 const AUTH_KEY = 'interview-qs-admin-auth'
+const PASS_KEY = 'interview-qs-admin-pass'
 
 function formatTime(iso) {
   try {
@@ -34,7 +34,8 @@ export default function AdminPage() {
   )
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [submissions, setSubmissions] = useState(() => getSubmissions())
+  const [loading, setLoading] = useState(false)
+  const [submissions, setSubmissions] = useState([])
 
   const sorted = useMemo(
     () =>
@@ -44,32 +45,85 @@ export default function AdminPage() {
     [submissions],
   )
 
-  function handleLogin(e) {
-    e.preventDefault()
-    if (password === ADMIN_PASSWORD) {
-      sessionStorage.setItem(AUTH_KEY, '1')
-      setAuthed(true)
-      setError('')
-      setPassword('')
-      setSubmissions(getSubmissions())
-    } else {
-      setError('Incorrect password.')
+  async function loadSubmissions(adminPassword) {
+    setLoading(true)
+    setError('')
+    try {
+      const list = await getSubmissions(adminPassword)
+      setSubmissions(list)
+      return true
+    } catch (err) {
+      if (err.status === 401) {
+        sessionStorage.removeItem(AUTH_KEY)
+        sessionStorage.removeItem(PASS_KEY)
+        setAuthed(false)
+        setError('Incorrect password.')
+      } else {
+        setError(err.message || 'Failed to load submissions.')
+      }
+      return false
+    } finally {
+      setLoading(false)
     }
   }
 
-  function handleClear() {
+  useEffect(() => {
+    if (!authed) return
+    const saved = sessionStorage.getItem(PASS_KEY)
+    if (!saved) {
+      setAuthed(false)
+      return
+    }
+    loadSubmissions(saved)
+  }, [authed])
+
+  async function handleLogin(e) {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+    try {
+      const list = await getSubmissions(password)
+      sessionStorage.setItem(AUTH_KEY, '1')
+      sessionStorage.setItem(PASS_KEY, password)
+      setAuthed(true)
+      setSubmissions(list)
+      setPassword('')
+    } catch (err) {
+      if (err.status === 401) {
+        setError('Incorrect password.')
+      } else {
+        setError(err.message || 'Could not reach the API. Deploy the worker first.')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleClear() {
     if (!window.confirm('Clear all submissions? This cannot be undone.')) return
-    clearSubmissions()
-    setSubmissions([])
+    const saved = sessionStorage.getItem(PASS_KEY)
+    setLoading(true)
+    setError('')
+    try {
+      await clearSubmissions(saved)
+      setSubmissions([])
+    } catch (err) {
+      setError(err.message || 'Failed to clear submissions.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handleRefresh() {
-    setSubmissions(getSubmissions())
+    const saved = sessionStorage.getItem(PASS_KEY)
+    if (saved) loadSubmissions(saved)
   }
 
   function handleLogout() {
     sessionStorage.removeItem(AUTH_KEY)
+    sessionStorage.removeItem(PASS_KEY)
     setAuthed(false)
+    setSubmissions([])
   }
 
   if (!authed) {
@@ -89,8 +143,8 @@ export default function AdminPage() {
               autoComplete="current-password"
             />
             {error ? <p className="form-error">{error}</p> : null}
-            <button type="submit" className="btn btn-primary">
-              Unlock
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? 'Checking…' : 'Unlock'}
             </button>
           </form>
           <Link to="/" className="text-link">
@@ -110,10 +164,20 @@ export default function AdminPage() {
             <h1 className="brand-sm">Interview Q&apos;s</h1>
           </div>
           <div className="admin-actions">
-            <button type="button" className="btn btn-secondary" onClick={handleRefresh}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleRefresh}
+              disabled={loading}
+            >
               Refresh
             </button>
-            <button type="button" className="btn btn-danger" onClick={handleClear}>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={handleClear}
+              disabled={loading}
+            >
               Clear all
             </button>
             <button type="button" className="btn btn-secondary" onClick={handleLogout}>
@@ -122,16 +186,21 @@ export default function AdminPage() {
           </div>
         </header>
 
-        {sorted.length === 0 ? (
+        {error ? <p className="form-error">{error}</p> : null}
+        {loading ? <p className="empty-state">Loading submissions…</p> : null}
+
+        {!loading && sorted.length === 0 ? (
           <p className="empty-state">No submissions yet.</p>
-        ) : (
+        ) : null}
+
+        {!loading && sorted.length > 0 ? (
           <ul className="submission-list">
             {sorted.map((sub) => {
-              const mcqAnswers = sub.answers.filter((a) => a.type === 'mcq')
+              const mcqAnswers = (sub.answers || []).filter((a) => a.type === 'mcq')
               const correctCount = mcqAnswers.filter((a) => a.isCorrect).length
               const leaveCount = sub.focusLeaves?.count ?? 0
               const leaveEvents = sub.focusLeaves?.events ?? []
-              const codeAnswers = sub.answers.filter((a) => a.type === 'code')
+              const codeAnswers = (sub.answers || []).filter((a) => a.type === 'code')
               const codePassed = codeAnswers.filter((a) => a.isCorrect).length
               return (
                 <li key={sub.id} className="submission-card">
@@ -179,7 +248,7 @@ export default function AdminPage() {
                   ) : null}
 
                   <ol className="answer-list">
-                    {sub.answers.map((a, i) => (
+                    {(sub.answers || []).map((a, i) => (
                       <li key={a.questionId}>
                         <p className="answer-q">
                           {i + 1}. {a.prompt}
@@ -238,7 +307,7 @@ export default function AdminPage() {
               )
             })}
           </ul>
-        )}
+        ) : null}
 
         <Link to="/" className="text-link">
           Back to quiz
