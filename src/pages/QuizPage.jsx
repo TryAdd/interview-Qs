@@ -2,6 +2,16 @@ import { useState } from 'react'
 import { questions } from '../data/questions'
 import { addSubmission } from '../utils/storage'
 
+function blockPaste(e) {
+  e.preventDefault()
+}
+
+function blockPasteKeys(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+    e.preventDefault()
+  }
+}
+
 function buildGradedAnswers(answers) {
   return questions.map((q) => {
     const value = answers[q.id]
@@ -93,6 +103,9 @@ export default function QuizPage() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onPaste={blockPaste}
+              onDrop={blockPaste}
+              onKeyDown={blockPasteKeys}
               placeholder="Enter your name"
               autoComplete="name"
             />
@@ -175,6 +188,9 @@ export default function QuizPage() {
               rows={5}
               value={typeof currentAnswer === 'string' ? currentAnswer : ''}
               onChange={(e) => setAnswer(e.target.value)}
+              onPaste={blockPaste}
+              onDrop={blockPaste}
+              onKeyDown={blockPasteKeys}
               placeholder="Type your answer here…"
             />
           </div>
