@@ -9,13 +9,16 @@ binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = ["/api/*"]
 
-# Create with: npx wrangler kv namespace create SUBMISSIONS
-# Then: npx wrangler kv namespace create SUBMISSIONS --preview
-# Paste the IDs below, then run: npm run deploy
+# REQUIRED: replace the placeholders below with real KV namespace IDs.
+# Dashboard: Cloudflare → Storage & Databases → KV → Create namespace "SUBMISSIONS" → copy ID
+# Or CLI (in your own terminal after `npx wrangler login`):
+#   npx wrangler kv namespace create SUBMISSIONS
+#   npx wrangler kv namespace create SUBMISSIONS --preview
+# You can use the same ID for both id and preview_id if you only created one namespace.
 [[kv_namespaces]]
 binding = "SUBMISSIONS"
 id = "REPLACE_WITH_KV_ID"
-preview_id = "REPLACE_WITH_KV_PREVIEW_ID"
+preview_id = "REPLACE_WITH_KV_ID"
 
 # Must match the password you use on /admin
 [vars]
