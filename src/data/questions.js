@@ -564,7 +564,8 @@ export const closingQuestions = [
     difficulty: "closing",
     topic: "closing",
     ungraded: true,
-    prompt: "How do you organize a Flutter project?",
+    prompt:
+      "How do you organize a Flutter project? | or what the type or approach that you choosed for clean architecture?",
   },
   {
     id: "close2",
