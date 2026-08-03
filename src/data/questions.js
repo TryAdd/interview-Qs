@@ -1,4 +1,4 @@
-export const ADMIN_PASSWORD = "interview2026";
+export const ADMIN_PASSWORD = "Gits2026";
 
 export const questions = [
   {
