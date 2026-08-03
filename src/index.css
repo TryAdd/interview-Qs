@@ -282,6 +282,11 @@ textarea {
   background: rgba(15, 107, 92, 0.12);
 }
 
+.difficulty-closing {
+  color: var(--ink-muted);
+  background: rgba(15, 42, 36, 0.08);
+}
+
 .gate-actions {
   margin-top: 0.5rem;
 }

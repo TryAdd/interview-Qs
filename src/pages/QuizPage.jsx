@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  closingQuestions,
   isCodeCorrect,
   objectBoxQuestions,
   pickExamQuestions,
@@ -45,10 +46,11 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
           questionId: q.id,
           type: 'mcq',
           difficulty: q.difficulty,
+          ungraded: Boolean(q.ungraded),
           prompt: q.prompt,
           answer: '',
           selectedIndex: null,
-          correctIndex: q.correctIndex,
+          correctIndex: q.correctIndex ?? null,
           isCorrect: null,
           skipped: !reached,
         }
@@ -60,11 +62,12 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
         questionId: q.id,
         type: 'mcq',
         difficulty: q.difficulty,
+        ungraded: Boolean(q.ungraded),
         prompt: q.prompt,
         answer: selectedText,
         selectedIndex,
-        correctIndex: q.correctIndex,
-        isCorrect: selectedIndex === q.correctIndex,
+        correctIndex: q.correctIndex ?? null,
+        isCorrect: q.ungraded ? null : selectedIndex === q.correctIndex,
         skipped: false,
       }
     }
@@ -91,6 +94,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
         questionId: q.id,
         type: 'text',
         difficulty: q.difficulty,
+        ungraded: Boolean(q.ungraded),
         prompt: q.prompt,
         answer: '',
         isCorrect: null,
@@ -102,6 +106,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
       questionId: q.id,
       type: 'text',
       difficulty: q.difficulty,
+      ungraded: Boolean(q.ungraded),
       prompt: q.prompt,
       answer: typeof value === 'string' ? value.trim() : '',
       isCorrect: null,
@@ -297,7 +302,11 @@ export default function QuizPage() {
   }
 
   function handleObjectBoxYes() {
-    const next = [...examQuestionsRef.current, ...objectBoxQuestions]
+    const next = [
+      ...examQuestionsRef.current,
+      ...objectBoxQuestions,
+      ...closingQuestions,
+    ]
     examQuestionsRef.current = next
     setExamQuestions(next)
     setObjectBoxChoice(true)
@@ -306,10 +315,14 @@ export default function QuizPage() {
     setPhase('quiz')
   }
 
-  async function handleObjectBoxNo() {
+  function handleObjectBoxNo() {
+    const next = [...examQuestionsRef.current, ...closingQuestions]
+    examQuestionsRef.current = next
+    setExamQuestions(next)
     setObjectBoxChoice(false)
     objectBoxChoiceRef.current = false
-    await submitExam({ endedEarly: false })
+    setIndex(CORE_EXAM_LENGTH)
+    setPhase('quiz')
   }
 
   function setAnswer(value) {

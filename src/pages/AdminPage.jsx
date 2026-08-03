@@ -196,7 +196,9 @@ export default function AdminPage() {
         {!loading && sorted.length > 0 ? (
           <ul className="submission-list">
             {sorted.map((sub) => {
-              const mcqAnswers = (sub.answers || []).filter((a) => a.type === 'mcq')
+              const mcqAnswers = (sub.answers || []).filter(
+                (a) => a.type === 'mcq' && !a.ungraded,
+              )
               const correctCount = mcqAnswers.filter((a) => a.isCorrect).length
               const leaveCount = sub.focusLeaves?.count ?? 0
               const leaveEvents = sub.focusLeaves?.events ?? []
@@ -279,7 +281,11 @@ export default function AdminPage() {
                             {a.explanation}
                           </p>
                         ) : null}
-                        {a.type === 'mcq' ? (
+                        {a.ungraded ? (
+                          <span className="tag tag-review">
+                            {a.skipped ? 'Not reached' : 'No right/wrong'}
+                          </span>
+                        ) : a.type === 'mcq' ? (
                           <span
                             className={
                               a.isCorrect ? 'tag tag-ok' : 'tag tag-miss'

@@ -553,6 +553,33 @@ List<Member> findByEmail(String email) {
   },
 ];
 
+/**
+ * Always asked at the end (after core, or after ObjectBox).
+ * No correct / incorrect grading — experience / opinion only.
+ */
+export const closingQuestions = [
+  {
+    id: "close1",
+    type: "text",
+    difficulty: "closing",
+    topic: "closing",
+    ungraded: true,
+    prompt: "How do you organize a Flutter project?",
+  },
+  {
+    id: "close2",
+    type: "mcq",
+    difficulty: "closing",
+    topic: "closing",
+    ungraded: true,
+    prompt: "Did you deploy any projects to the stores?",
+    options: [
+      "Yes — iOS, Android, and Huawei stores",
+      "No — I have not deployed to app stores",
+    ],
+  },
+];
+
 const EXAM_COUNTS = { easy: 4, medium: 3, hard: 3 };
 
 function shuffle(list) {
