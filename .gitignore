@@ -13,8 +13,8 @@ dist-ssr
 *.local
 
 # Local secrets / quiz data
-src/data/questions.js
-src/pages/AdminPage.jsx
+# src/data/questions.js
+# src/pages/AdminPage.jsx
 
 # Editor directories and files
 .vscode/*
