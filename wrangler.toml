@@ -17,8 +17,8 @@ run_worker_first = ["/api/*"]
 # You can use the same ID for both id and preview_id if you only created one namespace.
 [[kv_namespaces]]
 binding = "SUBMISSIONS"
-id = "REPLACE_WITH_KV_ID"
-preview_id = "REPLACE_WITH_KV_ID"
+id = "6d5195a6d7844b989b752c4f33cec098"
+preview_id = "6d5195a6d7844b989b752c4f33cec098"
 
 # Must match the password you use on /admin
 [vars]
