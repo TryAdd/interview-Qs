@@ -277,6 +277,19 @@ textarea {
   background: rgba(155, 44, 44, 0.1);
 }
 
+.difficulty-objectbox {
+  color: var(--accent);
+  background: rgba(15, 107, 92, 0.12);
+}
+
+.gate-actions {
+  margin-top: 0.5rem;
+}
+
+.gate-actions .btn {
+  margin-top: 0;
+}
+
 .options {
   border: none;
   margin: 0 0 1.75rem;

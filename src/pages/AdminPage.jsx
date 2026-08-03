@@ -212,6 +212,11 @@ export default function AdminPage() {
                         Ended early (skipped Q{sub.skippedAtQuestion})
                       </span>
                     ) : null}
+                    {sub.usedObjectBox === true ? (
+                      <span className="tag tag-ok">ObjectBox: Yes</span>
+                    ) : sub.usedObjectBox === false ? (
+                      <span className="tag tag-review">ObjectBox: No</span>
+                    ) : null}
                     <span
                       className={
                         leaveCount > 0

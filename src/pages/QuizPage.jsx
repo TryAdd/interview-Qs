@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { isCodeCorrect, pickExamQuestions } from '../data/questions'
+import {
+  isCodeCorrect,
+  objectBoxQuestions,
+  pickExamQuestions,
+} from '../data/questions'
 import { addSubmission } from '../utils/storage'
+
+const CORE_EXAM_LENGTH = 10
 
 function blockPaste(e) {
   e.preventDefault()
@@ -110,9 +116,11 @@ export default function QuizPage() {
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState({})
   const [examQuestions, setExamQuestions] = useState([])
+  const [objectBoxChoice, setObjectBoxChoice] = useState(null) // null | true | false
 
   const indexRef = useRef(0)
   const examQuestionsRef = useRef([])
+  const objectBoxChoiceRef = useRef(null)
   const focusLeavesRef = useRef([])
   const awaySinceRef = useRef(null)
   const lastLeaveAtRef = useRef(0)
@@ -124,6 +132,10 @@ export default function QuizPage() {
   useEffect(() => {
     examQuestionsRef.current = examQuestions
   }, [examQuestions])
+
+  useEffect(() => {
+    objectBoxChoiceRef.current = objectBoxChoice
+  }, [objectBoxChoice])
 
   useEffect(() => {
     if (phase !== 'quiz') return
@@ -188,6 +200,9 @@ export default function QuizPage() {
   const current = examQuestions[index]
   const total = examQuestions.length
   const isLast = total > 0 && index === total - 1
+  const atEndOfCore =
+    objectBoxChoice == null && index === CORE_EXAM_LENGTH - 1
+  const nextLabel = isLast && !atEndOfCore ? 'Submit' : 'Next'
   const isCode = current?.type === 'code'
 
   const currentAnswer = answers[current?.id]
@@ -233,7 +248,8 @@ export default function QuizPage() {
         endedEarly,
         skippedAtQuestion,
         examMix: { easy: 4, medium: 3, hard: 3 },
-        answers: buildGradedAnswers(examQuestions, finalAnswers, {
+        usedObjectBox: objectBoxChoiceRef.current,
+        answers: buildGradedAnswers(examQuestionsRef.current, finalAnswers, {
           endedEarly,
           skippedAtQuestion,
         }),
@@ -252,6 +268,19 @@ export default function QuizPage() {
     setPhase('done')
   }
 
+  /** After core 10 questions: ask ObjectBox gate (unless already decided). */
+  async function finishCoreOrSubmit(answersOverride = null) {
+    if (objectBoxChoice == null) {
+      if (answersOverride) setAnswers(answersOverride)
+      setPhase('objectbox-gate')
+      return
+    }
+    await submitExam({
+      endedEarly: false,
+      answersOverride: answersOverride ?? undefined,
+    })
+  }
+
   function handleStart(e) {
     e.preventDefault()
     focusLeavesRef.current = []
@@ -260,9 +289,27 @@ export default function QuizPage() {
     const picked = pickExamQuestions()
     examQuestionsRef.current = picked
     setExamQuestions(picked)
+    setObjectBoxChoice(null)
+    objectBoxChoiceRef.current = null
     setPhase('quiz')
     setIndex(0)
     setAnswers({})
+  }
+
+  function handleObjectBoxYes() {
+    const next = [...examQuestionsRef.current, ...objectBoxQuestions]
+    examQuestionsRef.current = next
+    setExamQuestions(next)
+    setObjectBoxChoice(true)
+    objectBoxChoiceRef.current = true
+    setIndex(CORE_EXAM_LENGTH)
+    setPhase('quiz')
+  }
+
+  async function handleObjectBoxNo() {
+    setObjectBoxChoice(false)
+    objectBoxChoiceRef.current = false
+    await submitExam({ endedEarly: false })
   }
 
   function setAnswer(value) {
@@ -311,7 +358,7 @@ export default function QuizPage() {
     }
     setAnswers(nextAnswers)
     if (isLast) {
-      await submitExam({ endedEarly: false, answersOverride: nextAnswers })
+      await finishCoreOrSubmit(nextAnswers)
       return
     }
     setIndex((i) => i + 1)
@@ -324,7 +371,7 @@ export default function QuizPage() {
     }
     if (!canProceed) return
     if (isLast) {
-      await submitExam({ endedEarly: false })
+      await finishCoreOrSubmit()
       return
     }
     setIndex((i) => i + 1)
@@ -353,9 +400,9 @@ export default function QuizPage() {
           <p className="eyebrow">Candidate assessment</p>
           <h1 className="brand">Interview Q&apos;s</h1>
           <p className="lead">
-            You will get 10 questions: 4 easy, 3 medium, and 3 hard. On code
-            questions, edit the code then continue — Skip (unchanged) ends the
-            exam.
+            You will get 10 questions: 4 easy, 3 medium, and 3 hard. After that
+            we may ask about ObjectBox. On code questions, edit then continue —
+            Skip (unchanged) ends the exam.
           </p>
           <form className="start-form" onSubmit={handleStart}>
             <label htmlFor="candidate-name">Your name (optional)</label>
@@ -398,6 +445,8 @@ export default function QuizPage() {
               setAnswers({})
               setExamQuestions([])
               examQuestionsRef.current = []
+              setObjectBoxChoice(null)
+              objectBoxChoiceRef.current = null
               focusLeavesRef.current = []
               awaySinceRef.current = null
               lastLeaveAtRef.current = 0
@@ -405,6 +454,36 @@ export default function QuizPage() {
           >
             Start over
           </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'objectbox-gate') {
+    return (
+      <div className="page">
+        <div className="panel start-panel">
+          <p className="eyebrow">Almost done</p>
+          <h1 className="brand">ObjectBox</h1>
+          <p className="lead">
+            Have you worked with ObjectBox in Flutter?
+          </p>
+          <div className="code-actions gate-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleObjectBoxYes}
+            >
+              Yes — continue
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleObjectBoxNo}
+            >
+              No — finish exam
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -486,7 +565,7 @@ export default function QuizPage() {
                 onClick={advanceFromCode}
                 disabled={!codeEdited}
               >
-                {isLast ? 'Submit' : 'Next'}
+                {nextLabel}
               </button>
               <button
                 type="button"
@@ -544,7 +623,7 @@ export default function QuizPage() {
               onClick={handleNext}
               disabled={!canProceed}
             >
-              {isLast ? 'Submit' : 'Next'}
+              {nextLabel}
             </button>
           )}
         </div>

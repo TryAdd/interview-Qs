@@ -421,43 +421,172 @@ void _increment() {
   },
 ];
 
-const EXAM_COUNTS = { easy: 4, medium: 3, hard: 3 }
+export const objectBoxQuestions = [
+  {
+    id: "ob1",
+    type: "mcq",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt: "What is ObjectBox primarily used for in a Flutter app?",
+    options: [
+      "Local NoSQL / object database on device",
+      "Remote REST API client only",
+      "Compiling Dart to JavaScript",
+      "Managing App Store releases",
+    ],
+    correctIndex: 0,
+  },
+  {
+    id: "ob2",
+    type: "mcq",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt:
+      "In an ObjectBox entity, what type should the `id` field normally be?",
+    options: ["String", "int", "double", "bool"],
+    correctIndex: 1,
+  },
+  {
+    id: "ob3",
+    type: "mcq",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt: "Which annotation marks a Dart class as an ObjectBox entity?",
+    options: ["@Table()", "@Entity()", "@Model()", "@Collection()"],
+    correctIndex: 1,
+  },
+  {
+    id: "ob4",
+    type: "mcq",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt:
+      "Which command is commonly used to generate ObjectBox code after defining entities?",
+    options: [
+      "flutter objectbox generate",
+      "dart run build_runner build",
+      "flutter generate",
+      "dart generate objectbox.g.dart",
+    ],
+    correctIndex: 2,
+  },
+  {
+    id: "ob5",
+    type: "text",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt: 'What does a "UID" do in ObjectBox?',
+  },
+  {
+    id: "ob6",
+    type: "text",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt: "What is the rule for the `id` field in an ObjectBox entity?",
+  },
+  {
+    id: "ob7",
+    type: "text",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt:
+      "Explain when you would use ObjectBox queries vs loading all objects and filtering in Dart. Give a short example scenario.",
+  },
+
+  // ── Code (3) ──────────────────────────────────────────
+  {
+    id: "ob8",
+    type: "code",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt:
+      "How do you tell ObjectBox to index a specific field (like an email) for fast lookups? Edit the code.",
+    code: `@Entity()
+class Member {
+  int id = 0;
+  String email;
+  
+  Member({required this.email});
+}`,
+    checks: {
+      anyOf: [/@Index\s*\(/i, /@Property\s*\([\s\S]*index/i],
+      allOf: [/email/i],
+    },
+  },
+  {
+    id: "ob9",
+    type: "code",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt:
+      "This entity is missing the ObjectBox entity annotation and a valid id. Edit the code so ObjectBox can use it.",
+    code: `class Note {
+  String title = '';
+  String body = '';
+}`,
+    checks: {
+      allOf: [/@Entity\s*\(/i, /\bint\s+id\b/i],
+    },
+  },
+  {
+    id: "ob10",
+    type: "code",
+    difficulty: "objectbox",
+    topic: "objectbox",
+    prompt:
+      "Complete this query so it finds members whose email equals the given value (use ObjectBox query style).",
+    code: `final box = store.box<Member>();
+
+List<Member> findByEmail(String email) {
+  // TODO: query by email
+  return [];
+}`,
+    checks: {
+      anyOf: [
+        /\.query\s*\(/i,
+        /Member_\.email/i,
+        /equals\s*\(/i,
+        /\.build\s*\(/i,
+        /\.find\s*\(/i,
+      ],
+    },
+  },
+];
+
+const EXAM_COUNTS = { easy: 4, medium: 3, hard: 3 };
 
 function shuffle(list) {
-  const arr = [...list]
+  const arr = [...list];
   for (let i = arr.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return arr
+  return arr;
 }
 
 /**
  * Pick a fresh exam set: 4 easy, 3 medium, 3 hard (random within each tier).
  * Order is always Easy → Medium → Hard.
  */
-export function pickExamQuestions(
-  counts = EXAM_COUNTS,
-  pool = questions,
-) {
-  const byDifficulty = { easy: [], medium: [], hard: [] }
+export function pickExamQuestions(counts = EXAM_COUNTS, pool = questions) {
+  const byDifficulty = { easy: [], medium: [], hard: [] };
   for (const q of pool) {
-    const d = q.difficulty || 'medium'
-    if (byDifficulty[d]) byDifficulty[d].push(q)
+    const d = q.difficulty || "medium";
+    if (byDifficulty[d]) byDifficulty[d].push(q);
   }
 
-  const picked = []
-  for (const level of ['easy', 'medium', 'hard']) {
-    const need = counts[level] ?? 0
-    const available = byDifficulty[level]
+  const picked = [];
+  for (const level of ["easy", "medium", "hard"]) {
+    const need = counts[level] ?? 0;
+    const available = byDifficulty[level];
     if (available.length < need) {
       throw new Error(
         `Not enough ${level} questions: need ${need}, have ${available.length}`,
-      )
+      );
     }
-    picked.push(...shuffle(available).slice(0, need))
+    picked.push(...shuffle(available).slice(0, need));
   }
-  return picked
+  return picked;
 }
 
 /** Returns true if edited code looks like a valid fix for the question. */
