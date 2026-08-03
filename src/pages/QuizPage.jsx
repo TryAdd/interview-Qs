@@ -29,6 +29,16 @@ function buildGradedAnswers(answers) {
         isCorrect: selectedIndex === q.correctIndex,
       }
     }
+    if (q.type === 'code') {
+      return {
+        questionId: q.id,
+        type: 'code',
+        prompt: q.prompt,
+        code: q.code,
+        answer: typeof value === 'string' ? value.trim() : '',
+        isCorrect: null,
+      }
+    }
     return {
       questionId: q.id,
       type: 'text',
@@ -270,6 +280,28 @@ export default function QuizPage() {
               </label>
             ))}
           </fieldset>
+        ) : current.type === 'code' ? (
+          <div className="code-answer">
+            <p className="code-label">Buggy / starter code</p>
+            <pre className="code-block">
+              <code>{current.code}</code>
+            </pre>
+            <label htmlFor="code-answer" className="code-answer-label">
+              Your fixed code / explanation
+            </label>
+            <textarea
+              id="code-answer"
+              className="code-textarea"
+              rows={10}
+              value={typeof currentAnswer === 'string' ? currentAnswer : ''}
+              onChange={(e) => setAnswer(e.target.value)}
+              onPaste={blockPaste}
+              onDrop={blockPaste}
+              onKeyDown={blockPasteKeys}
+              placeholder="Write the corrected code and a short explanation…"
+              spellCheck={false}
+            />
+          </div>
         ) : (
           <div className="text-answer">
             <label htmlFor="text-answer" className="sr-only">

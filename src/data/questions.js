@@ -88,4 +88,85 @@ export const questions = [
     prompt:
       "Why do you want this Flutter/Dart role, and what do you hope to learn or improve?",
   },
+  {
+    id: "q12",
+    type: "code",
+    prompt:
+      "Fix or adjust this code so the text is centered on the screen. Explain briefly what you changed.",
+    code: `Widget build(BuildContext context) {
+  return Column(
+    children: [
+      Text("I want to be in the center!"),
+    ],
+  );
+}`,
+  },
+  {
+    id: "q13",
+    type: "code",
+    prompt:
+      "This code is buggy. Fix it so `fetchData()` works correctly with `main`, and explain the issue.",
+    code: `void main() {
+  var data = fetchData();
+  print(data);
+}
+
+Future<String> fetchData() async {
+  await Future.delayed(Duration(seconds: 1));
+  return "Hello World";
+}`,
+  },
+  {
+    id: "q14",
+    type: "code",
+    prompt:
+      "Why doesn’t the screen update when the user taps the button in this StatefulWidget? Fix the code and explain why.",
+    code: `class CounterWidget extends StatefulWidget {
+  @override
+  _CounterWidgetState createState() => _CounterWidgetState();
+}
+
+class _CounterWidgetState extends State<CounterWidget> {
+  int count = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text("Count: $count"),
+        ElevatedButton(
+          onPressed: () {
+            count++; // Incrementing the value
+          },
+          child: Text("Increment"),
+        ),
+      ],
+    );
+  }
+}`,
+  },
+  {
+    id: "q15",
+    type: "code",
+    prompt:
+      "Why does the following code fail to update the UI when `counter` changes? Fix or explain the problem.",
+    code: `class CounterDisplay extends StatelessWidget {
+  final int counter;
+  const CounterDisplay({required this.counter});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text("Count: $counter");
+  }
+}
+
+// In the parent widget:
+final widget = const CounterDisplay(counter: 0);
+
+void _increment() {
+  setState(() {
+    // Logic to change counter...
+  });
+}`,
+  },
 ];

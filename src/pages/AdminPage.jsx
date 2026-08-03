@@ -174,6 +174,11 @@ export default function AdminPage() {
                         <p className="answer-q">
                           {i + 1}. {a.prompt}
                         </p>
+                        {a.type === 'code' && a.code ? (
+                          <pre className="code-block code-block-admin">
+                            <code>{a.code}</code>
+                          </pre>
+                        ) : null}
                         <p className="answer-a">{a.answer || '—'}</p>
                         {a.type === 'mcq' ? (
                           <span
@@ -183,6 +188,8 @@ export default function AdminPage() {
                           >
                             {a.isCorrect ? 'Correct' : 'Incorrect'}
                           </span>
+                        ) : a.type === 'code' ? (
+                          <span className="tag tag-review">Code review</span>
                         ) : (
                           <span className="tag tag-review">Review manually</span>
                         )}

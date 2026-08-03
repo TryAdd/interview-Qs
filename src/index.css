@@ -285,6 +285,52 @@ textarea {
   margin-bottom: 1.75rem;
 }
 
+.code-answer {
+  margin-bottom: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.code-label,
+.code-answer-label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.code-block {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0f2a24;
+  color: #e8f0ec;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.code-block code {
+  font-family: inherit;
+  white-space: pre;
+}
+
+.code-block-admin {
+  margin: 0 0 0.65rem;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.code-textarea {
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .nav-row {
   display: flex;
   justify-content: space-between;
