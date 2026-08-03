@@ -13,6 +13,21 @@ function formatTime(iso) {
   }
 }
 
+function formatDuration(ms) {
+  if (ms == null || Number.isNaN(ms)) return 'unknown'
+  const sec = Math.max(0, Math.round(ms / 1000))
+  if (sec < 60) return `${sec}s`
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}m ${s}s`
+}
+
+function reasonLabel(reason) {
+  if (reason === 'tab-hidden') return 'Switched tab / minimized'
+  if (reason === 'window-blur') return 'Left window / lost focus'
+  return reason || 'Left page'
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(
     () => sessionStorage.getItem(AUTH_KEY) === '1',
@@ -114,15 +129,45 @@ export default function AdminPage() {
             {sorted.map((sub) => {
               const mcqAnswers = sub.answers.filter((a) => a.type === 'mcq')
               const correctCount = mcqAnswers.filter((a) => a.isCorrect).length
+              const leaveCount = sub.focusLeaves?.count ?? 0
+              const leaveEvents = sub.focusLeaves?.events ?? []
               return (
                 <li key={sub.id} className="submission-card">
                   <div className="submission-meta">
                     <strong>{sub.name}</strong>
                     <span>{formatTime(sub.submittedAt)}</span>
+                    <span
+                      className={
+                        leaveCount > 0
+                          ? 'tag tag-miss focus-leave-badge'
+                          : 'tag tag-ok focus-leave-badge'
+                      }
+                    >
+                      {leaveCount > 0
+                        ? `Left exam ${leaveCount}×`
+                        : 'Stayed focused'}
+                    </span>
                     <span className="score-badge">
                       MCQ: {correctCount}/{mcqAnswers.length} correct
                     </span>
                   </div>
+
+                  {leaveCount > 0 ? (
+                    <details className="focus-leave-details">
+                      <summary>Focus / window leave log</summary>
+                      <ul className="focus-leave-list">
+                        {leaveEvents.map((ev, i) => (
+                          <li key={`${ev.at}-${i}`}>
+                            <span>{formatTime(ev.at)}</span>
+                            <span>Q{ev.questionIndex}</span>
+                            <span>{reasonLabel(ev.reason)}</span>
+                            <span>away {formatDuration(ev.durationMs)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  ) : null}
+
                   <ol className="answer-list">
                     {sub.answers.map((a, i) => (
                       <li key={a.questionId}>

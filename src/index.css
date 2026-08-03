@@ -384,6 +384,45 @@ textarea {
   color: var(--accent);
 }
 
+.focus-leave-badge {
+  border-radius: 8px;
+}
+
+.focus-leave-details {
+  margin: 0 0 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(155, 44, 44, 0.04);
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+}
+
+.focus-leave-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--miss);
+}
+
+.focus-leave-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.focus-leave-list li {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1.4fr) auto 1.4fr auto;
+  gap: 0.5rem 0.85rem;
+  align-items: baseline;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
 .answer-list {
   margin: 0;
   padding: 0;

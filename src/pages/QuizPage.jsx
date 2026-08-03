@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { questions } from '../data/questions'
 import { addSubmission } from '../utils/storage'
 
@@ -45,6 +45,76 @@ export default function QuizPage() {
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState({})
 
+  const indexRef = useRef(0)
+  const focusLeavesRef = useRef([])
+  const awaySinceRef = useRef(null)
+  const lastLeaveAtRef = useRef(0)
+
+  useEffect(() => {
+    indexRef.current = index
+  }, [index])
+
+  useEffect(() => {
+    if (phase !== 'quiz') return
+
+    function recordLeave(reason) {
+      const now = Date.now()
+      // visibilitychange + blur often fire together — count as one leave
+      if (now - lastLeaveAtRef.current < 400) return
+      if (awaySinceRef.current != null) return
+
+      lastLeaveAtRef.current = now
+      awaySinceRef.current = now
+      const qIndex = indexRef.current
+      const q = questions[qIndex]
+      focusLeavesRef.current.push({
+        at: new Date(now).toISOString(),
+        questionIndex: qIndex + 1,
+        questionId: q?.id ?? null,
+        reason,
+      })
+    }
+
+    function recordReturn() {
+      if (awaySinceRef.current == null) return
+      const leftAt = awaySinceRef.current
+      awaySinceRef.current = null
+      const events = focusLeavesRef.current
+      const last = events[events.length - 1]
+      if (last && last.durationMs == null) {
+        last.durationMs = Date.now() - leftAt
+        last.returnedAt = new Date().toISOString()
+      }
+    }
+
+    function onVisibilityChange() {
+      if (document.hidden) {
+        recordLeave('tab-hidden')
+      } else {
+        recordReturn()
+      }
+    }
+
+    function onWindowBlur() {
+      if (document.hidden) return
+      recordLeave('window-blur')
+    }
+
+    function onWindowFocus() {
+      if (!document.hidden) recordReturn()
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    window.addEventListener('blur', onWindowBlur)
+    window.addEventListener('focus', onWindowFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      window.removeEventListener('blur', onWindowBlur)
+      window.removeEventListener('focus', onWindowFocus)
+    }
+  }, [phase])
+
   const current = questions[index]
   const total = questions.length
   const isLast = index === total - 1
@@ -57,6 +127,9 @@ export default function QuizPage() {
 
   function handleStart(e) {
     e.preventDefault()
+    focusLeavesRef.current = []
+    awaySinceRef.current = null
+    lastLeaveAtRef.current = 0
     setPhase('quiz')
     setIndex(0)
     setAnswers({})
@@ -69,12 +142,28 @@ export default function QuizPage() {
   function handleNext() {
     if (!canProceed) return
     if (isLast) {
+      if (awaySinceRef.current != null) {
+        const leftAt = awaySinceRef.current
+        awaySinceRef.current = null
+        const events = focusLeavesRef.current
+        const last = events[events.length - 1]
+        if (last && last.durationMs == null) {
+          last.durationMs = Date.now() - leftAt
+          last.returnedAt = new Date().toISOString()
+        }
+      }
+
       const graded = buildGradedAnswers(answers)
+      const leaves = focusLeavesRef.current
       addSubmission({
         id: crypto.randomUUID(),
         name: name.trim() || 'Anonymous',
         submittedAt: new Date().toISOString(),
         answers: graded,
+        focusLeaves: {
+          count: leaves.length,
+          events: leaves,
+        },
       })
       setPhase('done')
       return
@@ -135,6 +224,9 @@ export default function QuizPage() {
               setName('')
               setIndex(0)
               setAnswers({})
+              focusLeavesRef.current = []
+              awaySinceRef.current = null
+              lastLeaveAtRef.current = 0
             }}
           >
             Start over
