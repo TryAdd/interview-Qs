@@ -331,6 +331,55 @@ textarea {
   line-height: 1.45;
 }
 
+.code-editor {
+  min-height: 260px;
+  background: #0f2a24;
+  color: #e8f0ec;
+  border-color: rgba(15, 42, 36, 0.5);
+}
+
+.code-editor:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 107, 92, 0.2);
+}
+
+.code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.code-actions .btn {
+  margin-top: 0;
+}
+
+.code-hint {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+}
+
+.optional-label {
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.code-explanation {
+  min-height: 88px;
+}
+
+.answer-explanation {
+  margin: 0 0 0.45rem;
+  color: var(--ink-muted);
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+}
+
+.answer-explanation-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
 .nav-row {
   display: flex;
   justify-content: space-between;
@@ -339,6 +388,13 @@ textarea {
 
 .nav-row .btn-primary {
   margin-top: 0;
+}
+
+.nav-hint {
+  align-self: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ink-muted);
 }
 
 .done-title {

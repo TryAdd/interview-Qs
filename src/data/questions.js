@@ -92,7 +92,7 @@ export const questions = [
     id: "q12",
     type: "code",
     prompt:
-      "Fix or adjust this code so the text is centered on the screen. Explain briefly what you changed.",
+      "Edit the code below so the text is centered on the screen. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `Widget build(BuildContext context) {
   return Column(
     children: [
@@ -100,12 +100,20 @@ export const questions = [
     ],
   );
 }`,
+    checks: {
+      anyOf: [
+        /mainAxisAlignment\s*:\s*MainAxisAlignment\.center/i,
+        /Center\s*\(/,
+        /Align\s*\([\s\S]*alignment\s*:\s*Alignment\.center/i,
+        /crossAxisAlignment\s*:\s*CrossAxisAlignment\.center/i,
+      ],
+    },
   },
   {
     id: "q13",
     type: "code",
     prompt:
-      "This code is buggy. Fix it so `fetchData()` works correctly with `main`, and explain the issue.",
+      "This code is buggy. Edit it so `fetchData()` works correctly with `main`. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `void main() {
   var data = fetchData();
   print(data);
@@ -115,12 +123,24 @@ Future<String> fetchData() async {
   await Future.delayed(Duration(seconds: 1));
   return "Hello World";
 }`,
+    checks: {
+      allOf: [
+        /await\s+fetchData\s*\(|fetchData\s*\(\s*\)\s*\.then\s*\(/i,
+        /async|Future/i,
+      ],
+      anyOf: [
+        /main\s*\(\s*\)\s*async/i,
+        /async\s+(void\s+)?main/i,
+        /Future\s*<[^>]*>\s*main/i,
+        /fetchData\s*\(\s*\)\s*\.then\s*\(/i,
+      ],
+    },
   },
   {
     id: "q14",
     type: "code",
     prompt:
-      "Why doesn’t the screen update when the user taps the button in this StatefulWidget? Fix the code and explain why.",
+      "The screen doesn’t update when the button is tapped. Edit the StatefulWidget to fix it. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `class CounterWidget extends StatefulWidget {
   @override
   _CounterWidgetState createState() => _CounterWidgetState();
@@ -144,12 +164,15 @@ class _CounterWidgetState extends State<CounterWidget> {
     );
   }
 }`,
+    checks: {
+      allOf: [/setState\s*\(/, /count\s*(\+\+|\+=\s*1)/],
+    },
   },
   {
     id: "q15",
     type: "code",
     prompt:
-      "Why does the following code fail to update the UI when `counter` changes? Fix or explain the problem.",
+      "This UI fails to update when `counter` changes. Edit the code to fix the problem. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `class CounterDisplay extends StatelessWidget {
   final int counter;
   const CounterDisplay({required this.counter});
@@ -168,5 +191,24 @@ void _increment() {
     // Logic to change counter...
   });
 }`,
+    checks: {
+      allOf: [/CounterDisplay\s*\(/],
+      noneOf: [/=\s*const\s+CounterDisplay\s*\(/],
+    },
   },
 ];
+
+/** Returns true if edited code looks like a valid fix for the question. */
+export function isCodeCorrect(question, code) {
+  if (!question?.checks || typeof code !== "string") return false;
+  const trimmed = code.trim();
+  if (!trimmed || trimmed === question.code.trim()) return false;
+
+  const { allOf = [], anyOf = [], noneOf = [] } = question.checks;
+
+  const passAll = allOf.every((re) => re.test(trimmed));
+  const passAny = anyOf.length === 0 || anyOf.some((re) => re.test(trimmed));
+  const passNone = noneOf.every((re) => !re.test(trimmed));
+
+  return passAll && passAny && passNone;
+}

@@ -131,11 +131,18 @@ export default function AdminPage() {
               const correctCount = mcqAnswers.filter((a) => a.isCorrect).length
               const leaveCount = sub.focusLeaves?.count ?? 0
               const leaveEvents = sub.focusLeaves?.events ?? []
+              const codeAnswers = sub.answers.filter((a) => a.type === 'code')
+              const codePassed = codeAnswers.filter((a) => a.isCorrect).length
               return (
                 <li key={sub.id} className="submission-card">
                   <div className="submission-meta">
                     <strong>{sub.name}</strong>
                     <span>{formatTime(sub.submittedAt)}</span>
+                    {sub.endedEarly ? (
+                      <span className="tag tag-miss">
+                        Ended early (skipped Q{sub.skippedAtQuestion})
+                      </span>
+                    ) : null}
                     <span
                       className={
                         leaveCount > 0
@@ -148,7 +155,10 @@ export default function AdminPage() {
                         : 'Stayed focused'}
                     </span>
                     <span className="score-badge">
-                      MCQ: {correctCount}/{mcqAnswers.length} correct
+                      MCQ: {correctCount}/{mcqAnswers.length}
+                      {codeAnswers.length > 0
+                        ? ` · Code: ${codePassed}/${codeAnswers.length}`
+                        : ''}
                     </span>
                   </div>
 
@@ -174,24 +184,52 @@ export default function AdminPage() {
                         <p className="answer-q">
                           {i + 1}. {a.prompt}
                         </p>
-                        {a.type === 'code' && a.code ? (
+                        {a.type === 'code' && (a.starterCode || a.code) ? (
                           <pre className="code-block code-block-admin">
-                            <code>{a.code}</code>
+                            <code>{a.starterCode || a.code}</code>
                           </pre>
                         ) : null}
                         <p className="answer-a">{a.answer || '—'}</p>
+                        {a.type === 'code' && a.explanation ? (
+                          <p className="answer-explanation">
+                            <span className="answer-explanation-label">
+                              Explanation:{' '}
+                            </span>
+                            {a.explanation}
+                          </p>
+                        ) : null}
                         {a.type === 'mcq' ? (
                           <span
                             className={
                               a.isCorrect ? 'tag tag-ok' : 'tag tag-miss'
                             }
                           >
-                            {a.isCorrect ? 'Correct' : 'Incorrect'}
+                            {a.skipped
+                              ? 'Not reached'
+                              : a.isCorrect
+                                ? 'Correct'
+                                : 'Incorrect'}
                           </span>
                         ) : a.type === 'code' ? (
-                          <span className="tag tag-review">Code review</span>
+                          <span
+                            className={
+                              a.skipped
+                                ? 'tag tag-miss'
+                                : a.isCorrect
+                                  ? 'tag tag-ok'
+                                  : 'tag tag-review'
+                            }
+                          >
+                            {a.skipped
+                              ? 'Skipped / ended'
+                              : a.isCorrect
+                                ? 'Code passed'
+                                : 'Code failed'}
+                          </span>
                         ) : (
-                          <span className="tag tag-review">Review manually</span>
+                          <span className="tag tag-review">
+                            {a.skipped ? 'Not reached' : 'Review manually'}
+                          </span>
                         )}
                       </li>
                     ))}
