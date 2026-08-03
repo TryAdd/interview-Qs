@@ -246,6 +246,37 @@ textarea {
   line-height: 1.35;
 }
 
+.difficulty-badge {
+  display: inline-block;
+  margin: 0 0 0.65rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.answer-q .difficulty-badge {
+  margin: 0 0 0 0.5rem;
+  vertical-align: middle;
+}
+
+.difficulty-easy {
+  color: var(--ok);
+  background: rgba(27, 107, 58, 0.1);
+}
+
+.difficulty-medium {
+  color: var(--review);
+  background: rgba(107, 90, 27, 0.12);
+}
+
+.difficulty-hard {
+  color: var(--miss);
+  background: rgba(155, 44, 44, 0.1);
+}
+
 .options {
   border: none;
   margin: 0 0 1.75rem;

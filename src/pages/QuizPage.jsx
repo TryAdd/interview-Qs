@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { isCodeCorrect, questions } from '../data/questions'
+import { isCodeCorrect, pickExamQuestions } from '../data/questions'
 import { addSubmission } from '../utils/storage'
 
 function blockPaste(e) {
@@ -27,9 +27,9 @@ function getExplanation(answer) {
   return ''
 }
 
-function buildGradedAnswers(answers, options = {}) {
+function buildGradedAnswers(examQuestions, answers, options = {}) {
   const { endedEarly = false, skippedAtQuestion = null } = options
-  return questions.map((q, i) => {
+  return examQuestions.map((q, i) => {
     const value = answers[q.id]
     const reached = !endedEarly || skippedAtQuestion == null || i + 1 <= skippedAtQuestion
 
@@ -38,6 +38,7 @@ function buildGradedAnswers(answers, options = {}) {
         return {
           questionId: q.id,
           type: 'mcq',
+          difficulty: q.difficulty,
           prompt: q.prompt,
           answer: '',
           selectedIndex: null,
@@ -52,6 +53,7 @@ function buildGradedAnswers(answers, options = {}) {
       return {
         questionId: q.id,
         type: 'mcq',
+        difficulty: q.difficulty,
         prompt: q.prompt,
         answer: selectedText,
         selectedIndex,
@@ -68,6 +70,7 @@ function buildGradedAnswers(answers, options = {}) {
       return {
         questionId: q.id,
         type: 'code',
+        difficulty: q.difficulty,
         prompt: q.prompt,
         starterCode: q.code,
         answer: code,
@@ -81,6 +84,7 @@ function buildGradedAnswers(answers, options = {}) {
       return {
         questionId: q.id,
         type: 'text',
+        difficulty: q.difficulty,
         prompt: q.prompt,
         answer: '',
         isCorrect: null,
@@ -91,6 +95,7 @@ function buildGradedAnswers(answers, options = {}) {
     return {
       questionId: q.id,
       type: 'text',
+      difficulty: q.difficulty,
       prompt: q.prompt,
       answer: typeof value === 'string' ? value.trim() : '',
       isCorrect: null,
@@ -104,8 +109,10 @@ export default function QuizPage() {
   const [name, setName] = useState('')
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState({})
+  const [examQuestions, setExamQuestions] = useState([])
 
   const indexRef = useRef(0)
+  const examQuestionsRef = useRef([])
   const focusLeavesRef = useRef([])
   const awaySinceRef = useRef(null)
   const lastLeaveAtRef = useRef(0)
@@ -113,6 +120,10 @@ export default function QuizPage() {
   useEffect(() => {
     indexRef.current = index
   }, [index])
+
+  useEffect(() => {
+    examQuestionsRef.current = examQuestions
+  }, [examQuestions])
 
   useEffect(() => {
     if (phase !== 'quiz') return
@@ -125,7 +136,7 @@ export default function QuizPage() {
       lastLeaveAtRef.current = now
       awaySinceRef.current = now
       const qIndex = indexRef.current
-      const q = questions[qIndex]
+      const q = examQuestionsRef.current[qIndex]
       focusLeavesRef.current.push({
         at: new Date(now).toISOString(),
         questionIndex: qIndex + 1,
@@ -174,9 +185,9 @@ export default function QuizPage() {
     }
   }, [phase])
 
-  const current = questions[index]
-  const total = questions.length
-  const isLast = index === total - 1
+  const current = examQuestions[index]
+  const total = examQuestions.length
+  const isLast = total > 0 && index === total - 1
   const isCode = current?.type === 'code'
 
   const currentAnswer = answers[current?.id]
@@ -221,7 +232,8 @@ export default function QuizPage() {
         submittedAt: new Date().toISOString(),
         endedEarly,
         skippedAtQuestion,
-        answers: buildGradedAnswers(finalAnswers, {
+        examMix: { easy: 4, medium: 3, hard: 3 },
+        answers: buildGradedAnswers(examQuestions, finalAnswers, {
           endedEarly,
           skippedAtQuestion,
         }),
@@ -245,6 +257,9 @@ export default function QuizPage() {
     focusLeavesRef.current = []
     awaySinceRef.current = null
     lastLeaveAtRef.current = 0
+    const picked = pickExamQuestions()
+    examQuestionsRef.current = picked
+    setExamQuestions(picked)
     setPhase('quiz')
     setIndex(0)
     setAnswers({})
@@ -338,8 +353,9 @@ export default function QuizPage() {
           <p className="eyebrow">Candidate assessment</p>
           <h1 className="brand">Interview Q&apos;s</h1>
           <p className="lead">
-            Answer each question in order. On code questions, edit the code then
-            continue — if you leave it unchanged, Skip ends the exam.
+            You will get 10 questions: 4 easy, 3 medium, and 3 hard. On code
+            questions, edit the code then continue — Skip (unchanged) ends the
+            exam.
           </p>
           <form className="start-form" onSubmit={handleStart}>
             <label htmlFor="candidate-name">Your name (optional)</label>
@@ -380,6 +396,8 @@ export default function QuizPage() {
               setName('')
               setIndex(0)
               setAnswers({})
+              setExamQuestions([])
+              examQuestionsRef.current = []
               focusLeavesRef.current = []
               awaySinceRef.current = null
               lastLeaveAtRef.current = 0
@@ -409,7 +427,12 @@ export default function QuizPage() {
           />
         </div>
 
-        <h2 className="question-prompt">{current.prompt}</h2>
+        {current?.difficulty ? (
+          <p className={`difficulty-badge difficulty-${current.difficulty}`}>
+            {current.difficulty}
+          </p>
+        ) : null}
+        <h2 className="question-prompt">{current?.prompt}</h2>
 
         {current.type === 'mcq' ? (
           <fieldset className="options">

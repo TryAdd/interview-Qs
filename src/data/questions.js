@@ -1,9 +1,15 @@
 export const ADMIN_PASSWORD = "Gits2026";
 
+/**
+ * Interview questions ordered Easy → Medium → Hard.
+ * `difficulty`: "easy" | "medium" | "hard"
+ */
 export const questions = [
+  // ── Easy ──────────────────────────────────────────────
   {
     id: "q1",
     type: "mcq",
+    difficulty: "easy",
     prompt: "What is Flutter primarily used for?",
     options: [
       "Building cross-platform apps from a single codebase",
@@ -15,44 +21,17 @@ export const questions = [
   },
   {
     id: "q2",
-    type: "text",
+    type: "mcq",
+    difficulty: "easy",
     prompt:
-      "What is the main difference between StatelessWidget and StatefulWidget?",
-    // options: [
-    //   'StatelessWidget can rebuild when its own state changes; StatefulWidget cannot',
-    //   'StatefulWidget holds mutable state that can change over time; StatelessWidget depends only on its configuration (props) and does not manage its own mutable state',
-    //   'StatelessWidget is for Android only; StatefulWidget is for iOS only',
-    //   'There is no difference — both manage state the same way',
-    // ],
-    // correctIndex: 1,
+      "In Dart, which keyword declares a variable that cannot be reassigned after initialization?",
+    options: ["var", "dynamic", "final", "late"],
+    correctIndex: 2,
   },
   {
     id: "q3",
-    type: "text",
-    prompt:
-      "Describe a Flutter project you built. What packages or patterns did you use, and what was your role?",
-  },
-  {
-    id: "q4",
-    type: "text",
-    prompt:
-      "How do you handle errors in Flutter without crashing the UI? Mention approaches you use (e.g. try/catch with async work, Future.error handling, errorBuilder, FlutterError.onError, showing snackbars/dialogs, and keeping the widget tree stable).",
-  },
-  {
-    id: "q5",
-    type: "text",
-    prompt:
-      "Why does Flutter throw “BoxConstraints forces an infinite height” or “infinite width”? Give a common cause (e.g. unbounded constraints with ListView, Column, or Expanded in the wrong parent) and explain how you fix it properly.",
-  },
-  {
-    id: "q6",
-    type: "text",
-    prompt:
-      "If a page has multiple text fields, what is the best way to implement it? Use this form as an example and describe your approach (Form, TextFormField, GlobalKey, validators, obscureText for password, keyboard types, focus/next field):\n\n• Name → text field\n• 2nd name → text field\n• Password → text field\n• Email → text field",
-  },
-  {
-    id: "q7",
     type: "mcq",
+    difficulty: "easy",
     prompt: "What does `async` / `await` help you do in Dart?",
     options: [
       "Compile Dart to native machine code",
@@ -63,34 +42,109 @@ export const questions = [
     correctIndex: 1,
   },
   {
-    id: "q8",
+    id: "q4",
     type: "text",
+    difficulty: "easy",
     prompt:
-      "Explain how you would structure state management in a mid-sized Flutter app (e.g. Provider, Riverpod, Bloc, or similar) and why.",
+      "What is the main difference between StatelessWidget and StatefulWidget?",
+  },
+  {
+    id: "q5",
+    type: "code",
+    difficulty: "easy",
+    prompt: "The text color should be red. Edit the code to make the text red.",
+    code: `Text(
+    "Hello Flutter",
+  )`,
+    checks: {
+      anyOf: [/style\s*:\s*TextStyle/i, /color\s*:\s*Colors\.red/i],
+    },
+  },
+  {
+    id: "q6",
+    type: "code",
+    difficulty: "easy",
+    prompt: "The Text widget should become bold. Edit the code.",
+    code: `Text("Flutter")`,
+    checks: {
+      anyOf: [/FontWeight\.bold/i],
+    },
+  },
+  {
+    id: "q7",
+    type: "code",
+    difficulty: "easy",
+    prompt:
+      "The button doesn't do anything. Edit the code to print 'Button Pressed' when tapped.",
+    code: `ElevatedButton(
+    onPressed: () {},
+    child: Text("Click Me"),
+  )`,
+    checks: {
+      anyOf: [/print\s*\(/i, /debugPrint\s*\(/i],
+    },
+  },
+  {
+    id: "q8",
+    type: "code",
+    difficulty: "easy",
+    prompt: "The AppBar title should display 'Home'. Edit the code.",
+    code: `Scaffold(
+    appBar: AppBar(),
+  )`,
+    checks: {
+      anyOf: [/title\s*:\s*Text\s*\(\s*["']Home["']\s*\)/i],
+    },
   },
   {
     id: "q9",
-    type: "mcq",
-    prompt:
-      "In Dart, which keyword declares a variable that cannot be reassigned after initialization?",
-    options: ["var", "dynamic", "final", "late"],
-    correctIndex: 2,
+    type: "code",
+    difficulty: "easy",
+    prompt: "The Row should have space between its children. Edit the code.",
+    code: `Row(
+    children: [
+      Text("A"),
+      Text("B"),
+    ],
+  )`,
+    checks: {
+      anyOf: [/mainAxisAlignment\s*:\s*MainAxisAlignment\.spaceBetween/i],
+    },
   },
   {
     id: "q10",
-    type: "text",
-    prompt:
-      "How do you approach debugging a Flutter layout or state issue you have never seen before?",
+    type: "code",
+    difficulty: "easy",
+    prompt: "The ListView should display 10 items instead of 5. Edit the code.",
+    code: `ListView.builder(
+    itemCount: 5,
+    itemBuilder: (_, index) {
+      return ListTile(
+        title: Text("Item $index"),
+      );
+    },
+  )`,
+    checks: {
+      anyOf: [/itemCount\s*:\s*10/i],
+    },
   },
   {
     id: "q11",
-    type: "text",
+    type: "code",
+    difficulty: "easy",
     prompt:
-      "Why do you want this Flutter/Dart role, and what do you hope to learn or improve?",
+      "The CircularProgressIndicator should appear in the center of the screen. Edit the code.",
+    code: `Scaffold(
+    body: CircularProgressIndicator(),
+  )`,
+    checks: {
+      anyOf: [/Center\s*\(/i],
+    },
   },
   {
     id: "q12",
     type: "code",
+    difficulty: "easy",
     prompt:
       "Edit the code below so the text is centered on the screen. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `Widget build(BuildContext context) {
@@ -109,36 +163,12 @@ export const questions = [
       ],
     },
   },
+
+  // ── Medium ────────────────────────────────────────────
   {
     id: "q13",
     type: "code",
-    prompt:
-      "This code is buggy. Edit it so `fetchData()` works correctly with `main`. Continue after editing — Skip (only if unchanged) ends the exam.",
-    code: `void main() {
-  var data = fetchData();
-  print(data);
-}
-
-Future<String> fetchData() async {
-  await Future.delayed(Duration(seconds: 1));
-  return "Hello World";
-}`,
-    checks: {
-      allOf: [
-        /await\s+fetchData\s*\(|fetchData\s*\(\s*\)\s*\.then\s*\(/i,
-        /async|Future/i,
-      ],
-      anyOf: [
-        /main\s*\(\s*\)\s*async/i,
-        /async\s+(void\s+)?main/i,
-        /Future\s*<[^>]*>\s*main/i,
-        /fetchData\s*\(\s*\)\s*\.then\s*\(/i,
-      ],
-    },
-  },
-  {
-    id: "q14",
-    type: "code",
+    difficulty: "medium",
     prompt:
       "The screen doesn’t update when the button is tapped. Edit the StatefulWidget to fix it. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `class CounterWidget extends StatefulWidget {
@@ -169,8 +199,131 @@ class _CounterWidgetState extends State<CounterWidget> {
     },
   },
   {
+    id: "q14",
+    type: "code",
+    difficulty: "medium",
+    prompt:
+      "This code is buggy. Edit it so `fetchData()` works correctly with `main`. Continue after editing — Skip (only if unchanged) ends the exam.",
+    code: `void main() {
+  var data = fetchData();
+  print(data);
+}
+
+Future<String> fetchData() async {
+  await Future.delayed(Duration(seconds: 1));
+  return "Hello World";
+}`,
+    checks: {
+      allOf: [
+        /await\s+fetchData\s*\(|fetchData\s*\(\s*\)\s*\.then\s*\(/i,
+        /async|Future/i,
+      ],
+      anyOf: [
+        /main\s*\(\s*\)\s*async/i,
+        /async\s+(void\s+)?main/i,
+        /Future\s*<[^>]*>\s*main/i,
+        /fetchData\s*\(\s*\)\s*\.then\s*\(/i,
+      ],
+    },
+  },
+  {
     id: "q15",
     type: "code",
+    difficulty: "medium",
+    prompt:
+      "The button should navigate to HomePage when pressed. Edit the code.",
+    code: `ElevatedButton(
+    onPressed: () {},
+    child: Text("Go"),
+  )`,
+    checks: {
+      anyOf: [/Navigator\.push/i, /MaterialPageRoute/i],
+    },
+  },
+  {
+    id: "q16",
+    type: "code",
+    difficulty: "medium",
+    prompt:
+      "The API request may throw an exception and crash the screen. Edit the code to handle the error.",
+    code: `Future<void> loadUsers() async {
+    final users = await api.getUsers();
+  
+    print(users);
+  }`,
+    checks: {
+      anyOf: [/try\s*\{/i, /catch\s*\(/i],
+    },
+  },
+  {
+    id: "q17",
+    type: "text",
+    difficulty: "medium",
+    prompt:
+      "If a page has multiple text fields, what is the best way to implement it? Use this form as an example and describe your approach (Form, TextFormField, GlobalKey, validators, obscureText for password, keyboard types, focus/next field):\n\n• Name → text field\n• 2nd name → text field\n• Password → text field\n• Email → text field",
+  },
+  {
+    id: "q18",
+    type: "text",
+    difficulty: "medium",
+    prompt:
+      "How do you handle errors in Flutter without crashing the UI? Mention approaches you use (e.g. try/catch with async work, Future.error handling, errorBuilder, FlutterError.onError, showing snackbars/dialogs, and keeping the widget tree stable).",
+  },
+  {
+    id: "q19",
+    type: "text",
+    difficulty: "medium",
+    prompt:
+      "How do you approach debugging a Flutter layout or state issue you have never seen before?",
+  },
+  {
+    id: "q20",
+    type: "text",
+    difficulty: "medium",
+    prompt:
+      "Describe a Flutter project you built. What packages or patterns did you use, and what was your role?",
+  },
+  {
+    id: "q21",
+    type: "text",
+    difficulty: "medium",
+    prompt:
+      "Why do you want this Flutter/Dart role, and what do you hope to learn or improve?",
+  },
+
+  // ── Hard ──────────────────────────────────────────────
+  {
+    id: "q22",
+    type: "text",
+    difficulty: "hard",
+    prompt:
+      "Why does Flutter throw “BoxConstraints forces an infinite height” or “infinite width”? Give a common cause (e.g. unbounded constraints with ListView, Column, or Expanded in the wrong parent) and explain how you fix it properly.",
+  },
+  {
+    id: "q23",
+    type: "code",
+    difficulty: "hard",
+    prompt:
+      "The ListView causes a layout error because it is inside a Column. Edit the code correctly.",
+    code: `Column(
+    children: [
+      Text("Users"),
+      ListView.builder(
+        itemCount: 20,
+        itemBuilder: (_, i) => ListTile(
+          title: Text("User $i"),
+        ),
+      ),
+    ],
+  )`,
+    checks: {
+      anyOf: [/Expanded\s*\(/i, /Flexible\s*\(/i, /shrinkWrap\s*:\s*true/i],
+    },
+  },
+  {
+    id: "q24",
+    type: "code",
+    difficulty: "hard",
     prompt:
       "This UI fails to update when `counter` changes. Edit the code to fix the problem. Continue after editing — Skip (only if unchanged) ends the exam.",
     code: `class CounterDisplay extends StatelessWidget {
@@ -196,7 +349,116 @@ void _increment() {
       noneOf: [/=\s*const\s+CounterDisplay\s*\(/],
     },
   },
+  {
+    id: "q25",
+    type: "code",
+    difficulty: "hard",
+    prompt:
+      "The screen should navigate to HomePage only after login() finishes successfully. Edit the code.",
+    code: `ElevatedButton(
+    onPressed: () {
+      login();
+  
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => HomePage(),
+        ),
+      );
+    },
+    child: Text("Login"),
+  )`,
+    checks: {
+      allOf: [/await\s+login\s*\(/i],
+      anyOf: [/async/i],
+    },
+  },
+  {
+    id: "q26",
+    type: "text",
+    difficulty: "hard",
+    prompt:
+      "Explain how you would structure state management in a mid-sized Flutter app (e.g. Provider, Riverpod, Bloc, or similar) and why.",
+  },
+  {
+    id: "q27",
+    type: "text",
+    difficulty: "hard",
+    prompt:
+      "Design the architecture for a Flutter app that includes authentication, offline caching, REST APIs, and push notifications. Explain how you would organize the project folders, state management, repositories, dependency injection, and error handling.",
+  },
+  {
+    id: "q28",
+    type: "text",
+    difficulty: "hard",
+    prompt:
+      "Explain what causes widgets to rebuild in Flutter. How would you reduce unnecessary rebuilds in a large application?",
+  },
+  {
+    id: "q29",
+    type: "code",
+    difficulty: "hard",
+    prompt:
+      "Deleting an item from this ListView removes the wrong row because widget state is being reused. Edit the code to fix the issue.",
+    code: `ListView.builder(
+    itemCount: users.length,
+    itemBuilder: (_, index) {
+      return ListTile(
+        title: Text(users[index].name),
+      );
+    },
+  )`,
+    checks: {
+      anyOf: [/key\s*:/i, /ValueKey/i, /ObjectKey/i],
+    },
+  },
+  {
+    id: "q30",
+    type: "text",
+    difficulty: "hard",
+    prompt:
+      "Your Flutter screen contains a ListView with 1,000 items and scrolling feels slow. Explain how you would identify the bottleneck and optimize the screen.",
+  },
 ];
+
+const EXAM_COUNTS = { easy: 4, medium: 3, hard: 3 }
+
+function shuffle(list) {
+  const arr = [...list]
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+/**
+ * Pick a fresh exam set: 4 easy, 3 medium, 3 hard (random within each tier).
+ * Order is always Easy → Medium → Hard.
+ */
+export function pickExamQuestions(
+  counts = EXAM_COUNTS,
+  pool = questions,
+) {
+  const byDifficulty = { easy: [], medium: [], hard: [] }
+  for (const q of pool) {
+    const d = q.difficulty || 'medium'
+    if (byDifficulty[d]) byDifficulty[d].push(q)
+  }
+
+  const picked = []
+  for (const level of ['easy', 'medium', 'hard']) {
+    const need = counts[level] ?? 0
+    const available = byDifficulty[level]
+    if (available.length < need) {
+      throw new Error(
+        `Not enough ${level} questions: need ${need}, have ${available.length}`,
+      )
+    }
+    picked.push(...shuffle(available).slice(0, need))
+  }
+  return picked
+}
 
 /** Returns true if edited code looks like a valid fix for the question. */
 export function isCodeCorrect(question, code) {

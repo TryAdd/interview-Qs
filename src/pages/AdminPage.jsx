@@ -252,6 +252,13 @@ export default function AdminPage() {
                       <li key={a.questionId}>
                         <p className="answer-q">
                           {i + 1}. {a.prompt}
+                          {a.difficulty ? (
+                            <span
+                              className={`difficulty-badge difficulty-${a.difficulty}`}
+                            >
+                              {a.difficulty}
+                            </span>
+                          ) : null}
                         </p>
                         {a.type === 'code' && (a.starterCode || a.code) ? (
                           <pre className="code-block code-block-admin">
