@@ -42,7 +42,12 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
   } = options
   return examQuestions.map((q, i) => {
     const value = answers[q.id]
-    const reached = !endedEarly || skippedAtQuestion == null || i + 1 <= skippedAtQuestion
+    const isClosing = q.topic === 'closing'
+    const reached =
+      isClosing ||
+      !endedEarly ||
+      skippedAtQuestion == null ||
+      i + 1 <= skippedAtQuestion
     const durationMs =
       typeof timings[q.id] === 'number' ? timings[q.id] : null
 
@@ -139,10 +144,14 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState({})
   const [examQuestions, setExamQuestions] = useState([])
   const [objectBoxChoice, setObjectBoxChoice] = useState(null) // null | true | false
+  const [endedEarly, setEndedEarly] = useState(false)
+  const [skippedAtQuestion, setSkippedAtQuestion] = useState(null)
 
   const indexRef = useRef(0)
   const examQuestionsRef = useRef([])
   const objectBoxChoiceRef = useRef(null)
+  const endedEarlyRef = useRef(false)
+  const skippedAtQuestionRef = useRef(null)
   const focusLeavesRef = useRef([])
   const awaySinceRef = useRef(null)
   const lastLeaveAtRef = useRef(0)
@@ -380,6 +389,10 @@ export default function QuizPage() {
     setExamQuestions(picked)
     setObjectBoxChoice(null)
     objectBoxChoiceRef.current = null
+    setEndedEarly(false)
+    endedEarlyRef.current = false
+    setSkippedAtQuestion(null)
+    skippedAtQuestionRef.current = null
     setPhase('quiz')
     setIndex(0)
     setAnswers({})
@@ -423,19 +436,21 @@ export default function QuizPage() {
     finalizeAwayTime()
     const leaves = focusLeavesRef.current
     const timings = getTimingsSnapshot()
+    const early = endedEarlyRef.current
+    const skippedAt = skippedAtQuestionRef.current
     try {
       await addSubmission({
         id: crypto.randomUUID(),
         name: name.trim() || 'Anonymous',
         email: email.trim(),
         submittedAt: new Date().toISOString(),
-        endedEarly: false,
-        skippedAtQuestion: null,
+        endedEarly: early,
+        skippedAtQuestion: skippedAt,
         examMix: { easy: 4, medium: 3, hard: 3 },
         usedObjectBox: objectBoxChoiceRef.current,
         answers: buildGradedAnswers(allQuestions, answers, {
-          endedEarly: false,
-          skippedAtQuestion: null,
+          endedEarly: early,
+          skippedAtQuestion: skippedAt,
           timings,
         }),
         focusLeaves: {
@@ -514,16 +529,25 @@ export default function QuizPage() {
     setIndex((i) => i + 1)
   }
 
-  async function handleSkip() {
+  function handleSkip() {
     if (!isCode || codeEdited) return
     if (
       !window.confirm(
-        'Skip ends the exam now and submits what you have finished. Continue?',
+        'Skip ends the remaining exam questions. You will still answer the final wrap-up questions. Continue?',
       )
     ) {
       return
     }
-    await submitExam({ endedEarly: true, skippedAtQuestion: index + 1 })
+    setEndedEarly(true)
+    endedEarlyRef.current = true
+    setSkippedAtQuestion(index + 1)
+    skippedAtQuestionRef.current = index + 1
+    // If they never answered ObjectBox gate, mark as skipped/unknown
+    if (objectBoxChoice == null) {
+      setObjectBoxChoice(false)
+      objectBoxChoiceRef.current = false
+    }
+    setPhase('closing')
   }
 
   function handleBack() {
@@ -785,10 +809,10 @@ export default function QuizPage() {
                 title={
                   codeEdited
                     ? 'Clear your edits to skip, or press Next to continue'
-                    : 'End the exam without answering'
+                    : 'Skip remaining questions, then answer wrap-up'
                 }
               >
-                Skip (end exam)
+                Skip (to wrap-up)
               </button>
             </div>
             <p className="code-hint">
