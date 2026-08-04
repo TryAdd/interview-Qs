@@ -559,29 +559,6 @@ export default function QuizPage() {
           <p className="lead">
             Your responses have been submitted. You may close this page.
           </p>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => {
-              setPhase('start')
-              setName('')
-              setIndex(0)
-              setAnswers({})
-              setExamQuestions([])
-              examQuestionsRef.current = []
-              setObjectBoxChoice(null)
-              objectBoxChoiceRef.current = null
-              focusLeavesRef.current = []
-              awaySinceRef.current = null
-              lastLeaveAtRef.current = 0
-              questionDurationsRef.current = {}
-              timingQuestionIdRef.current = null
-              timingStartedAtRef.current = null
-              closingStartedAtRef.current = null
-            }}
-          >
-            Start over
-          </button>
         </div>
       </div>
     )
