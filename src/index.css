@@ -89,6 +89,54 @@ textarea {
   margin: 1.5rem auto;
 }
 
+/* Large screens: bigger question box so content fits with less scrolling */
+@media (min-width: 900px) {
+  .page:not(.page-wide) {
+    padding: 1.25rem;
+  }
+
+  .quiz-panel,
+  .start-panel,
+  .done-panel,
+  .admin-login {
+    width: min(860px, 94vw);
+    max-height: calc(100vh - 2.5rem);
+    overflow-y: auto;
+    padding: 2.5rem 2.75rem;
+  }
+
+  .quiz-panel .question-prompt {
+    font-size: 1.5rem;
+  }
+
+  .quiz-panel .code-editor {
+    min-height: clamp(220px, 36vh, 460px);
+  }
+
+  .quiz-panel .text-answer textarea,
+  .quiz-panel .code-explanation {
+    min-height: clamp(140px, 22vh, 280px);
+  }
+
+  .quiz-panel .closing-questions .text-answer textarea {
+    min-height: clamp(120px, 18vh, 220px);
+  }
+}
+
+@media (min-width: 1200px) {
+  .quiz-panel,
+  .start-panel,
+  .done-panel,
+  .admin-login {
+    width: min(960px, 90vw);
+    padding: 2.75rem 3rem;
+  }
+
+  .quiz-panel .code-editor {
+    min-height: clamp(260px, 40vh, 520px);
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
