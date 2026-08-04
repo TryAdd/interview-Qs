@@ -28,6 +28,223 @@ function reasonLabel(reason) {
   return reason || 'Left page'
 }
 
+function summarizeSubmission(sub) {
+  const answers = sub.answers || []
+  const reached = answers.filter((a) => !a.skipped)
+  const answered = reached.filter((a) => {
+    if (a.type === 'mcq') return a.selectedIndex != null || (a.answer && a.answer !== '')
+    return Boolean(a.answer && String(a.answer).trim())
+  })
+
+  const mcq = answers.filter((a) => a.type === 'mcq' && !a.ungraded && !a.skipped)
+  const mcqCorrect = mcq.filter((a) => a.isCorrect).length
+
+  const code = answers.filter((a) => a.type === 'code' && !a.skipped)
+  const codePassed = code.filter((a) => a.isCorrect).length
+
+  const textReview = answers.filter(
+    (a) => a.type === 'text' && !a.ungraded && !a.skipped,
+  ).length
+
+  const leaveCount = sub.focusLeaves?.count ?? 0
+  const leaveEvents = sub.focusLeaves?.events ?? []
+  const totalAwayMs = leaveEvents.reduce(
+    (sum, ev) => sum + (typeof ev.durationMs === 'number' ? ev.durationMs : 0),
+    0,
+  )
+
+  const gradedTotal = mcq.length + code.length
+  const gradedCorrect = mcqCorrect + codePassed
+  const scorePct =
+    gradedTotal > 0 ? Math.round((gradedCorrect / gradedTotal) * 100) : null
+
+  const storeAnswer = answers.find((a) => a.questionId === 'close2')
+  const deployNote = storeAnswer?.answer || null
+
+  return {
+    answers,
+    answeredCount: answered.length,
+    totalCount: answers.length,
+    mcqCorrect,
+    mcqTotal: mcq.length,
+    codePassed,
+    codeTotal: code.length,
+    textReview,
+    leaveCount,
+    leaveEvents,
+    totalAwayMs,
+    scorePct,
+    gradedCorrect,
+    gradedTotal,
+    deployNote,
+  }
+}
+
+function SubmissionCard({ sub }) {
+  const stats = summarizeSubmission(sub)
+
+  return (
+    <li className="submission-card">
+      <details className="submission-details">
+        <summary className="submission-summary">
+          <div className="summary-top">
+            <strong className="summary-name">{sub.name}</strong>
+            <span className="summary-time">{formatTime(sub.submittedAt)}</span>
+            <span className="summary-chevron" aria-hidden="true" />
+          </div>
+
+          <div className="summary-stats">
+            <span className="summary-stat">
+              <em>Answered</em>
+              {stats.answeredCount}/{stats.totalCount}
+            </span>
+            <span className="summary-stat">
+              <em>Score</em>
+              {stats.scorePct == null
+                ? '—'
+                : `${stats.gradedCorrect}/${stats.gradedTotal} (${stats.scorePct}%)`}
+            </span>
+            <span className="summary-stat">
+              <em>MCQ</em>
+              {stats.mcqCorrect}/{stats.mcqTotal}
+            </span>
+            <span className="summary-stat">
+              <em>Code</em>
+              {stats.codePassed}/{stats.codeTotal}
+            </span>
+            <span
+              className={`summary-stat ${stats.leaveCount > 0 ? 'is-alert' : 'is-ok'}`}
+            >
+              <em>Unfocus</em>
+              {stats.leaveCount > 0
+                ? `${stats.leaveCount}× · ${formatDuration(stats.totalAwayMs)}`
+                : 'None'}
+            </span>
+            <span className="summary-stat">
+              <em>ObjectBox</em>
+              {sub.usedObjectBox === true
+                ? 'Yes'
+                : sub.usedObjectBox === false
+                  ? 'No'
+                  : '—'}
+            </span>
+            {sub.endedEarly ? (
+              <span className="summary-stat is-alert">
+                <em>Status</em>
+                Ended early (Q{sub.skippedAtQuestion})
+              </span>
+            ) : (
+              <span className="summary-stat is-ok">
+                <em>Status</em>
+                Completed
+              </span>
+            )}
+            {stats.deployNote ? (
+              <span className="summary-stat summary-stat-wide">
+                <em>Stores</em>
+                {stats.deployNote}
+              </span>
+            ) : null}
+          </div>
+        </summary>
+
+        <div className="submission-body">
+          {stats.leaveCount > 0 ? (
+            <div className="focus-leave-details open-block">
+              <p className="focus-leave-title">Focus / window leave log</p>
+              <ul className="focus-leave-list">
+                {stats.leaveEvents.map((ev, i) => (
+                  <li key={`${ev.at}-${i}`}>
+                    <span>{formatTime(ev.at)}</span>
+                    <span>Q{ev.questionIndex}</span>
+                    <span>{reasonLabel(ev.reason)}</span>
+                    <span>away {formatDuration(ev.durationMs)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="focus-ok-note">No focus / window leaves during the exam.</p>
+          )}
+
+          {stats.textReview > 0 ? (
+            <p className="review-note">
+              {stats.textReview} open-text answer
+              {stats.textReview === 1 ? '' : 's'} to review manually.
+            </p>
+          ) : null}
+
+          <ol className="answer-list">
+            {stats.answers.map((a, i) => (
+              <li key={a.questionId}>
+                <p className="answer-q">
+                  {i + 1}. {a.prompt}
+                  {a.difficulty ? (
+                    <span
+                      className={`difficulty-badge difficulty-${a.difficulty}`}
+                    >
+                      {a.difficulty}
+                    </span>
+                  ) : null}
+                </p>
+                {a.type === 'code' && (a.starterCode || a.code) ? (
+                  <pre className="code-block code-block-admin">
+                    <code>{a.starterCode || a.code}</code>
+                  </pre>
+                ) : null}
+                <p className="answer-a">{a.answer || '—'}</p>
+                {a.type === 'code' && a.explanation ? (
+                  <p className="answer-explanation">
+                    <span className="answer-explanation-label">
+                      Explanation:{' '}
+                    </span>
+                    {a.explanation}
+                  </p>
+                ) : null}
+                {a.ungraded ? (
+                  <span className="tag tag-review">
+                    {a.skipped ? 'Not reached' : 'No right/wrong'}
+                  </span>
+                ) : a.type === 'mcq' ? (
+                  <span
+                    className={a.isCorrect ? 'tag tag-ok' : 'tag tag-miss'}
+                  >
+                    {a.skipped
+                      ? 'Not reached'
+                      : a.isCorrect
+                        ? 'Correct'
+                        : 'Incorrect'}
+                  </span>
+                ) : a.type === 'code' ? (
+                  <span
+                    className={
+                      a.skipped
+                        ? 'tag tag-miss'
+                        : a.isCorrect
+                          ? 'tag tag-ok'
+                          : 'tag tag-review'
+                    }
+                  >
+                    {a.skipped
+                      ? 'Skipped / ended'
+                      : a.isCorrect
+                        ? 'Code passed'
+                        : 'Code failed'}
+                  </span>
+                ) : (
+                  <span className="tag tag-review">
+                    {a.skipped ? 'Not reached' : 'Review manually'}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      </details>
+    </li>
+  )
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(
     () => sessionStorage.getItem(AUTH_KEY) === '1',
@@ -195,135 +412,9 @@ export default function AdminPage() {
 
         {!loading && sorted.length > 0 ? (
           <ul className="submission-list">
-            {sorted.map((sub) => {
-              const mcqAnswers = (sub.answers || []).filter(
-                (a) => a.type === 'mcq' && !a.ungraded,
-              )
-              const correctCount = mcqAnswers.filter((a) => a.isCorrect).length
-              const leaveCount = sub.focusLeaves?.count ?? 0
-              const leaveEvents = sub.focusLeaves?.events ?? []
-              const codeAnswers = (sub.answers || []).filter((a) => a.type === 'code')
-              const codePassed = codeAnswers.filter((a) => a.isCorrect).length
-              return (
-                <li key={sub.id} className="submission-card">
-                  <div className="submission-meta">
-                    <strong>{sub.name}</strong>
-                    <span>{formatTime(sub.submittedAt)}</span>
-                    {sub.endedEarly ? (
-                      <span className="tag tag-miss">
-                        Ended early (skipped Q{sub.skippedAtQuestion})
-                      </span>
-                    ) : null}
-                    {sub.usedObjectBox === true ? (
-                      <span className="tag tag-ok">ObjectBox: Yes</span>
-                    ) : sub.usedObjectBox === false ? (
-                      <span className="tag tag-review">ObjectBox: No</span>
-                    ) : null}
-                    <span
-                      className={
-                        leaveCount > 0
-                          ? 'tag tag-miss focus-leave-badge'
-                          : 'tag tag-ok focus-leave-badge'
-                      }
-                    >
-                      {leaveCount > 0
-                        ? `Left exam ${leaveCount}×`
-                        : 'Stayed focused'}
-                    </span>
-                    <span className="score-badge">
-                      MCQ: {correctCount}/{mcqAnswers.length}
-                      {codeAnswers.length > 0
-                        ? ` · Code: ${codePassed}/${codeAnswers.length}`
-                        : ''}
-                    </span>
-                  </div>
-
-                  {leaveCount > 0 ? (
-                    <details className="focus-leave-details">
-                      <summary>Focus / window leave log</summary>
-                      <ul className="focus-leave-list">
-                        {leaveEvents.map((ev, i) => (
-                          <li key={`${ev.at}-${i}`}>
-                            <span>{formatTime(ev.at)}</span>
-                            <span>Q{ev.questionIndex}</span>
-                            <span>{reasonLabel(ev.reason)}</span>
-                            <span>away {formatDuration(ev.durationMs)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
-                  ) : null}
-
-                  <ol className="answer-list">
-                    {(sub.answers || []).map((a, i) => (
-                      <li key={a.questionId}>
-                        <p className="answer-q">
-                          {i + 1}. {a.prompt}
-                          {a.difficulty ? (
-                            <span
-                              className={`difficulty-badge difficulty-${a.difficulty}`}
-                            >
-                              {a.difficulty}
-                            </span>
-                          ) : null}
-                        </p>
-                        {a.type === 'code' && (a.starterCode || a.code) ? (
-                          <pre className="code-block code-block-admin">
-                            <code>{a.starterCode || a.code}</code>
-                          </pre>
-                        ) : null}
-                        <p className="answer-a">{a.answer || '—'}</p>
-                        {a.type === 'code' && a.explanation ? (
-                          <p className="answer-explanation">
-                            <span className="answer-explanation-label">
-                              Explanation:{' '}
-                            </span>
-                            {a.explanation}
-                          </p>
-                        ) : null}
-                        {a.ungraded ? (
-                          <span className="tag tag-review">
-                            {a.skipped ? 'Not reached' : 'No right/wrong'}
-                          </span>
-                        ) : a.type === 'mcq' ? (
-                          <span
-                            className={
-                              a.isCorrect ? 'tag tag-ok' : 'tag tag-miss'
-                            }
-                          >
-                            {a.skipped
-                              ? 'Not reached'
-                              : a.isCorrect
-                                ? 'Correct'
-                                : 'Incorrect'}
-                          </span>
-                        ) : a.type === 'code' ? (
-                          <span
-                            className={
-                              a.skipped
-                                ? 'tag tag-miss'
-                                : a.isCorrect
-                                  ? 'tag tag-ok'
-                                  : 'tag tag-review'
-                            }
-                          >
-                            {a.skipped
-                              ? 'Skipped / ended'
-                              : a.isCorrect
-                                ? 'Code passed'
-                                : 'Code failed'}
-                          </span>
-                        ) : (
-                          <span className="tag tag-review">
-                            {a.skipped ? 'Not reached' : 'Review manually'}
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                </li>
-              )
-            })}
+            {sorted.map((sub) => (
+              <SubmissionCard key={sub.id} sub={sub} />
+            ))}
           </ul>
         ) : null}
 

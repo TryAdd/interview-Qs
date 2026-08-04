@@ -273,17 +273,14 @@ export default function QuizPage() {
     setPhase('done')
   }
 
-  /** After core 10 questions: ask ObjectBox gate (unless already decided). */
+  /** After core 10: ObjectBox gate. After ObjectBox (or No): closing screen. */
   async function finishCoreOrSubmit(answersOverride = null) {
+    if (answersOverride) setAnswers(answersOverride)
     if (objectBoxChoice == null) {
-      if (answersOverride) setAnswers(answersOverride)
       setPhase('objectbox-gate')
       return
     }
-    await submitExam({
-      endedEarly: false,
-      answersOverride: answersOverride ?? undefined,
-    })
+    setPhase('closing')
   }
 
   function handleStart(e) {
@@ -302,11 +299,7 @@ export default function QuizPage() {
   }
 
   function handleObjectBoxYes() {
-    const next = [
-      ...examQuestionsRef.current,
-      ...objectBoxQuestions,
-      ...closingQuestions,
-    ]
+    const next = [...examQuestionsRef.current, ...objectBoxQuestions]
     examQuestionsRef.current = next
     setExamQuestions(next)
     setObjectBoxChoice(true)
@@ -316,17 +309,58 @@ export default function QuizPage() {
   }
 
   function handleObjectBoxNo() {
-    const next = [...examQuestionsRef.current, ...closingQuestions]
-    examQuestionsRef.current = next
-    setExamQuestions(next)
     setObjectBoxChoice(false)
     objectBoxChoiceRef.current = false
-    setIndex(CORE_EXAM_LENGTH)
-    setPhase('quiz')
+    setPhase('closing')
+  }
+
+  function setAnswerFor(questionId, value) {
+    setAnswers((prev) => ({ ...prev, [questionId]: value }))
   }
 
   function setAnswer(value) {
-    setAnswers((prev) => ({ ...prev, [current.id]: value }))
+    setAnswerFor(current.id, value)
+  }
+
+  function closingCanSubmit() {
+    return closingQuestions.every((q) => {
+      const value = answers[q.id]
+      if (q.type === 'mcq') return typeof value === 'number'
+      return typeof value === 'string' && value.trim().length > 0
+    })
+  }
+
+  async function handleClosingSubmit() {
+    if (!closingCanSubmit()) return
+    const allQuestions = [...examQuestionsRef.current, ...closingQuestions]
+    finalizeAwayTime()
+    const leaves = focusLeavesRef.current
+    try {
+      await addSubmission({
+        id: crypto.randomUUID(),
+        name: name.trim() || 'Anonymous',
+        submittedAt: new Date().toISOString(),
+        endedEarly: false,
+        skippedAtQuestion: null,
+        examMix: { easy: 4, medium: 3, hard: 3 },
+        usedObjectBox: objectBoxChoiceRef.current,
+        answers: buildGradedAnswers(allQuestions, answers, {
+          endedEarly: false,
+          skippedAtQuestion: null,
+        }),
+        focusLeaves: {
+          count: leaves.length,
+          events: leaves,
+        },
+      })
+    } catch (err) {
+      window.alert(
+        err?.message ||
+          'Could not save your answers to the server. Check your connection and try again.',
+      )
+      return
+    }
+    setPhase('done')
   }
 
   function handleCodeChange(value) {
@@ -494,7 +528,82 @@ export default function QuizPage() {
               className="btn btn-secondary"
               onClick={handleObjectBoxNo}
             >
-              No — finish exam
+              No — continue
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (phase === 'closing') {
+    return (
+      <div className="page">
+        <div className="panel quiz-panel">
+          <header className="quiz-header">
+            <span className="brand-sm">Interview Q&apos;s</span>
+            <span className="progress">Final questions</span>
+          </header>
+          <p className="difficulty-badge difficulty-closing">closing</p>
+          <h2 className="question-prompt">A couple of wrap-up questions</h2>
+          <p className="lead closing-lead">
+            There is no right or wrong answer — share your experience.
+          </p>
+
+          <div className="closing-questions">
+            {closingQuestions.map((q, i) => {
+              const value = answers[q.id]
+              return (
+                <section key={q.id} className="closing-block">
+                  <h3 className="closing-prompt">
+                    {i + 1}. {q.prompt}
+                  </h3>
+                  {q.type === 'mcq' ? (
+                    <fieldset className="options">
+                      <legend className="sr-only">{q.prompt}</legend>
+                      {q.options.map((option, optIndex) => (
+                        <label key={option} className="option">
+                          <input
+                            type="radio"
+                            name={q.id}
+                            checked={value === optIndex}
+                            onChange={() => setAnswerFor(q.id, optIndex)}
+                          />
+                          <span>{option}</span>
+                        </label>
+                      ))}
+                    </fieldset>
+                  ) : (
+                    <div className="text-answer">
+                      <label htmlFor={`closing-${q.id}`} className="sr-only">
+                        Your answer
+                      </label>
+                      <textarea
+                        id={`closing-${q.id}`}
+                        rows={5}
+                        value={typeof value === 'string' ? value : ''}
+                        onChange={(e) => setAnswerFor(q.id, e.target.value)}
+                        onPaste={blockPaste}
+                        onDrop={blockPaste}
+                        onKeyDown={blockPasteKeys}
+                        placeholder="Type your answer here…"
+                      />
+                    </div>
+                  )}
+                </section>
+              )
+            })}
+          </div>
+
+          <div className="nav-row">
+            <span className="nav-hint">Answer both to finish</span>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleClosingSubmit}
+              disabled={!closingCanSubmit()}
+            >
+              Submit
             </button>
           </div>
         </div>
