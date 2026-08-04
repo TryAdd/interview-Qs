@@ -126,9 +126,15 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
   })
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+}
+
 export default function QuizPage() {
   const [phase, setPhase] = useState('start')
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [startError, setStartError] = useState('')
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState({})
   const [examQuestions, setExamQuestions] = useState([])
@@ -319,6 +325,7 @@ export default function QuizPage() {
       await addSubmission({
         id: crypto.randomUUID(),
         name: name.trim() || 'Anonymous',
+        email: email.trim(),
         submittedAt: new Date().toISOString(),
         endedEarly,
         skippedAtQuestion,
@@ -356,6 +363,11 @@ export default function QuizPage() {
 
   function handleStart(e) {
     e.preventDefault()
+    if (!isValidEmail(email)) {
+      setStartError('Please enter a valid email address.')
+      return
+    }
+    setStartError('')
     focusLeavesRef.current = []
     awaySinceRef.current = null
     lastLeaveAtRef.current = 0
@@ -415,6 +427,7 @@ export default function QuizPage() {
       await addSubmission({
         id: crypto.randomUUID(),
         name: name.trim() || 'Anonymous',
+        email: email.trim(),
         submittedAt: new Date().toISOString(),
         endedEarly: false,
         skippedAtQuestion: null,
@@ -529,6 +542,22 @@ export default function QuizPage() {
             Skip (unchanged) ends the exam.
           </p>
           <form className="start-form" onSubmit={handleStart}>
+            <label htmlFor="candidate-email">Email (required)</label>
+            <input
+              id="candidate-email"
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value)
+                if (startError) setStartError('')
+              }}
+              onPaste={blockPaste}
+              onDrop={blockPaste}
+              onKeyDown={blockPasteKeys}
+              placeholder="you@example.com"
+              autoComplete="email"
+              required
+            />
             <label htmlFor="candidate-name">Your name (optional)</label>
             <input
               id="candidate-name"
@@ -541,6 +570,7 @@ export default function QuizPage() {
               placeholder="Enter your name"
               autoComplete="name"
             />
+            {startError ? <p className="form-error">{startError}</p> : null}
             <button type="submit" className="btn btn-primary">
               Start
             </button>

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Sora:wght@400;500;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Sora:wght@400;500;600&display=swap");
 
 :root {
   --bg-1: #e8f0ec;
@@ -16,7 +16,7 @@
   --review: #6b5a1b;
   --shadow: 0 18px 50px rgba(15, 42, 36, 0.12);
   --radius: 18px;
-  font-family: 'Sora', sans-serif;
+  font-family: "Sora", sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color: var(--ink);
@@ -50,7 +50,7 @@ h1,
 h2,
 .brand,
 .brand-sm {
-  font-family: 'Fraunces', serif;
+  font-family: "Fraunces", serif;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -139,8 +139,9 @@ textarea {
   font-weight: 500;
 }
 
-input[type='text'],
-input[type='password'],
+input[type="text"],
+input[type="email"],
+input[type="password"],
 textarea {
   width: 100%;
   border: 1px solid var(--border);
@@ -149,7 +150,9 @@ textarea {
   background: #fff;
   color: var(--ink);
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 input:focus,
@@ -170,7 +173,10 @@ textarea {
   padding: 0.85rem 1.35rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .btn:disabled {
@@ -349,7 +355,9 @@ textarea {
   border-radius: 12px;
   background: #fff;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .option:hover {
@@ -578,6 +586,12 @@ textarea {
 .summary-name {
   color: var(--ink);
   font-size: 1.08rem;
+}
+
+.summary-email {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .summary-time {

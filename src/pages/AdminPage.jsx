@@ -105,6 +105,9 @@ function SubmissionCard({ sub }) {
         <summary className="submission-summary">
           <div className="summary-top">
             <strong className="summary-name">{sub.name}</strong>
+            {sub.email ? (
+              <span className="summary-email">{sub.email}</span>
+            ) : null}
             <span className="summary-time">{formatTime(sub.submittedAt)}</span>
             <span className="summary-chevron" aria-hidden="true" />
           </div>
