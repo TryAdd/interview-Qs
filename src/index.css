@@ -110,9 +110,15 @@ textarea {
   margin-bottom: 1.25rem;
 }
 
-.link-form .btn {
+.link-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
   margin-top: 0.35rem;
-  align-self: flex-start;
+}
+
+.link-form-actions .btn {
+  margin-top: 0;
 }
 
 .link-list {

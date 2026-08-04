@@ -151,6 +151,28 @@ export default {
       return json({ error: 'Method not allowed' }, 405)
     }
 
+    // DELETE /api/links/cleanup — remove used / revoked / expired links
+    if (url.pathname === '/api/links/cleanup' && request.method === 'DELETE') {
+      if (!isAuthorized(request, env)) {
+        return json({ error: 'Unauthorized' }, 401)
+      }
+      const links = await readLinks(env)
+      const kept = links.filter((l) => {
+        const status = publicLinkStatus(l)
+        return status === 'unused' || status === 'started'
+      })
+      const removed = links.length - kept.length
+      await writeLinks(env, kept)
+      return json({
+        ok: true,
+        removed,
+        links: kept.map((l) => ({
+          ...l,
+          effectiveStatus: publicLinkStatus(l),
+        })),
+      })
+    }
+
     // DELETE /api/links/:token
     const linkDeleteMatch = url.pathname.match(/^\/api\/links\/([^/]+)$/)
     if (linkDeleteMatch) {

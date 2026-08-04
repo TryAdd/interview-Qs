@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  clearEndedExamLinks,
   clearSubmissions,
   createExamLink,
   getExamLinks,
@@ -458,6 +459,35 @@ export default function AdminPage() {
     }
   }
 
+  async function handleClearEndedLinks() {
+    const endedCount = links.filter((l) => {
+      const status = l.effectiveStatus || l.status
+      return status === 'used' || status === 'revoked' || status === 'expired'
+    }).length
+    if (endedCount === 0) {
+      setError('No revoked or ended links to clear.')
+      return
+    }
+    if (
+      !window.confirm(
+        `Clear ${endedCount} revoked/used/expired link${endedCount === 1 ? '' : 's'}? Active unused/started links stay.`,
+      )
+    ) {
+      return
+    }
+    const saved = sessionStorage.getItem(PASS_KEY)
+    setLoading(true)
+    setError('')
+    try {
+      const result = await clearEndedExamLinks(saved)
+      setLinks(Array.isArray(result.links) ? result.links : [])
+    } catch (err) {
+      setError(err.message || 'Failed to clear ended links.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   function handleLogout() {
     sessionStorage.removeItem(AUTH_KEY)
     sessionStorage.removeItem(PASS_KEY)
@@ -551,9 +581,19 @@ export default function AdminPage() {
               onChange={(e) => setLinkHours(e.target.value)}
               placeholder="e.g. 48 (leave empty for no time expiry)"
             />
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              Generate link
-            </button>
+            <div className="link-form-actions">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                Generate link
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleClearEndedLinks}
+                disabled={loading}
+              >
+                Clear revoked / ended links
+              </button>
+            </div>
           </form>
 
           {links.length === 0 ? (

@@ -119,6 +119,20 @@ export async function revokeExamLink(password, token) {
   return res.json()
 }
 
+export async function clearEndedExamLinks(password) {
+  const res = await fetch(`${API_BASE}/api/links/cleanup`, {
+    method: 'DELETE',
+    headers: adminHeaders(password),
+  })
+  if (res.status === 401) {
+    const err = new Error('Unauthorized')
+    err.status = 401
+    throw err
+  }
+  if (!res.ok) throw new Error(`Failed to clear ended links (${res.status})`)
+  return res.json()
+}
+
 export async function validateExamToken(token) {
   const res = await fetch(
     `${API_BASE}/api/exam/${encodeURIComponent(token)}`,
