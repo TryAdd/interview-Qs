@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { clearSubmissions, getSubmissions } from '../utils/storage'
+import {
+  clearSubmissions,
+  createExamLink,
+  getExamLinks,
+  getSubmissions,
+  revokeExamLink,
+} from '../utils/storage'
 
 const AUTH_KEY = 'interview-qs-admin-auth'
 const PASS_KEY = 'interview-qs-admin-pass'
@@ -277,6 +283,16 @@ function SubmissionCard({ sub }) {
   )
 }
 
+function examUrl(token) {
+  return `${window.location.origin}/e/${token}`
+}
+
+function statusClass(status) {
+  if (status === 'unused') return 'tag tag-ok'
+  if (status === 'started') return 'tag tag-review'
+  return 'tag tag-miss'
+}
+
 export default function AdminPage() {
   const [authed, setAuthed] = useState(
     () => sessionStorage.getItem(AUTH_KEY) === '1',
@@ -285,6 +301,10 @@ export default function AdminPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [submissions, setSubmissions] = useState([])
+  const [links, setLinks] = useState([])
+  const [linkLabel, setLinkLabel] = useState('')
+  const [linkHours, setLinkHours] = useState('')
+  const [copiedToken, setCopiedToken] = useState('')
 
   const sorted = useMemo(
     () =>
@@ -294,12 +314,16 @@ export default function AdminPage() {
     [submissions],
   )
 
-  async function loadSubmissions(adminPassword) {
+  async function loadAll(adminPassword) {
     setLoading(true)
     setError('')
     try {
-      const list = await getSubmissions(adminPassword)
+      const [list, examLinks] = await Promise.all([
+        getSubmissions(adminPassword),
+        getExamLinks(adminPassword),
+      ])
       setSubmissions(list)
+      setLinks(examLinks)
       return true
     } catch (err) {
       if (err.status === 401) {
@@ -308,7 +332,7 @@ export default function AdminPage() {
         setAuthed(false)
         setError('Incorrect password.')
       } else {
-        setError(err.message || 'Failed to load submissions.')
+        setError(err.message || 'Failed to load admin data.')
       }
       return false
     } finally {
@@ -323,7 +347,7 @@ export default function AdminPage() {
       setAuthed(false)
       return
     }
-    loadSubmissions(saved)
+    loadAll(saved)
   }, [authed])
 
   async function handleLogin(e) {
@@ -331,11 +355,15 @@ export default function AdminPage() {
     setLoading(true)
     setError('')
     try {
-      const list = await getSubmissions(password)
+      const [list, examLinks] = await Promise.all([
+        getSubmissions(password),
+        getExamLinks(password),
+      ])
       sessionStorage.setItem(AUTH_KEY, '1')
       sessionStorage.setItem(PASS_KEY, password)
       setAuthed(true)
       setSubmissions(list)
+      setLinks(examLinks)
       setPassword('')
     } catch (err) {
       if (err.status === 401) {
@@ -365,7 +393,67 @@ export default function AdminPage() {
 
   function handleRefresh() {
     const saved = sessionStorage.getItem(PASS_KEY)
-    if (saved) loadSubmissions(saved)
+    if (saved) loadAll(saved)
+  }
+
+  async function handleCreateLink(e) {
+    e.preventDefault()
+    const saved = sessionStorage.getItem(PASS_KEY)
+    setLoading(true)
+    setError('')
+    try {
+      const hours = linkHours ? Number(linkHours) : null
+      const result = await createExamLink(saved, {
+        label: linkLabel.trim() || undefined,
+        expiresInHours: Number.isFinite(hours) && hours > 0 ? hours : undefined,
+      })
+      setLinks((prev) => [result.link, ...prev])
+      setLinkLabel('')
+      setLinkHours('')
+      const url = examUrl(result.link.token)
+      try {
+        await navigator.clipboard.writeText(url)
+        setCopiedToken(result.link.token)
+      } catch {
+        // ignore clipboard failures
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to create link.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCopyLink(token) {
+    try {
+      await navigator.clipboard.writeText(examUrl(token))
+      setCopiedToken(token)
+    } catch {
+      setError('Could not copy link. Copy it manually from the list.')
+    }
+  }
+
+  async function handleRevokeLink(token) {
+    if (!window.confirm('Revoke this invite link? It will stop working immediately.')) {
+      return
+    }
+    const saved = sessionStorage.getItem(PASS_KEY)
+    setLoading(true)
+    setError('')
+    try {
+      await revokeExamLink(saved, token)
+      setLinks((prev) =>
+        prev.map((l) =>
+          l.token === token
+            ? { ...l, status: 'revoked', effectiveStatus: 'revoked' }
+            : l,
+        ),
+      )
+    } catch (err) {
+      setError(err.message || 'Failed to revoke link.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   function handleLogout() {
@@ -436,7 +524,89 @@ export default function AdminPage() {
         </header>
 
         {error ? <p className="form-error">{error}</p> : null}
-        {loading ? <p className="empty-state">Loading submissions…</p> : null}
+
+        <section className="links-section">
+          <h2 className="section-title">One-time exam links</h2>
+          <p className="lead section-lead">
+            Generate a private link for each candidate. After they finish (or
+            you revoke it), the link cannot open the exam again.
+          </p>
+          <form className="link-form" onSubmit={handleCreateLink}>
+            <label htmlFor="link-label">Label (optional)</label>
+            <input
+              id="link-label"
+              type="text"
+              value={linkLabel}
+              onChange={(e) => setLinkLabel(e.target.value)}
+              placeholder="e.g. Ahmed — Flutter round"
+            />
+            <label htmlFor="link-hours">Expires in hours (optional)</label>
+            <input
+              id="link-hours"
+              type="text"
+              inputMode="numeric"
+              value={linkHours}
+              onChange={(e) => setLinkHours(e.target.value)}
+              placeholder="e.g. 48 (leave empty for no time expiry)"
+            />
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              Generate link
+            </button>
+          </form>
+
+          {links.length === 0 ? (
+            <p className="empty-state">No invite links yet.</p>
+          ) : (
+            <ul className="link-list">
+              {links.map((link) => {
+                const status = link.effectiveStatus || link.status
+                const url = examUrl(link.token)
+                return (
+                  <li key={link.token} className="link-card">
+                    <div className="link-card-top">
+                      <strong>{link.label || 'Exam link'}</strong>
+                      <span className={statusClass(status)}>{status}</span>
+                    </div>
+                    <code className="link-url">{url}</code>
+                    <div className="link-meta">
+                      <span>Created {formatTime(link.createdAt)}</span>
+                      {link.expiresAt ? (
+                        <span>Expires {formatTime(link.expiresAt)}</span>
+                      ) : (
+                        <span>No time expiry</span>
+                      )}
+                      {link.usedAt ? (
+                        <span>Used {formatTime(link.usedAt)}</span>
+                      ) : null}
+                    </div>
+                    <div className="link-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleCopyLink(link.token)}
+                      >
+                        {copiedToken === link.token ? 'Copied' : 'Copy link'}
+                      </button>
+                      {status === 'unused' || status === 'started' ? (
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={() => handleRevokeLink(link.token)}
+                          disabled={loading}
+                        >
+                          Revoke
+                        </button>
+                      ) : null}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
+        <h2 className="section-title">Submissions</h2>
+        {loading ? <p className="empty-state">Loading…</p> : null}
 
         {!loading && sorted.length === 0 ? (
           <p className="empty-state">No submissions yet.</p>

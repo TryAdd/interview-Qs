@@ -89,6 +89,88 @@ textarea {
   margin: 1.5rem auto;
 }
 
+.section-title {
+  margin: 1.75rem 0 0.5rem;
+  font-size: 1.25rem;
+}
+
+.section-lead {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+}
+
+.links-section {
+  margin-bottom: 0.5rem;
+}
+
+.link-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.link-form .btn {
+  margin-top: 0.35rem;
+  align-self: flex-start;
+}
+
+.link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.link-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  background: #fff;
+}
+
+.link-card-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.link-url {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(15, 42, 36, 0.05);
+  font-size: 0.8rem;
+  color: var(--ink);
+}
+
+.link-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin: 0.55rem 0 0.7rem;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+.link-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.link-actions .btn {
+  margin-top: 0;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.88rem;
+}
+
 /* Large screens: bigger question box so content fits with less scrolling */
 @media (min-width: 900px) {
   .page:not(.page-wide) {

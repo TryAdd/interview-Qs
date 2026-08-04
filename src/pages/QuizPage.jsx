@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import {
   closingQuestions,
   isCodeCorrect,
   objectBoxQuestions,
   pickExamQuestions,
 } from '../data/questions'
-import { addSubmission } from '../utils/storage'
+import {
+  addSubmission,
+  startExamToken,
+  validateExamToken,
+} from '../utils/storage'
 
 const CORE_EXAM_LENGTH = 10
 
@@ -136,6 +141,9 @@ function isValidEmail(value) {
 }
 
 export default function QuizPage() {
+  const { token } = useParams()
+  const [linkState, setLinkState] = useState('loading') // loading | ready | invalid | used | revoked | expired
+  const [linkLabel, setLinkLabel] = useState('')
   const [phase, setPhase] = useState('start')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -159,6 +167,33 @@ export default function QuizPage() {
   const timingQuestionIdRef = useRef(null)
   const timingStartedAtRef = useRef(null)
   const closingStartedAtRef = useRef(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function checkLink() {
+      if (!token) {
+        setLinkState('invalid')
+        return
+      }
+      setLinkState('loading')
+      try {
+        const result = await validateExamToken(token)
+        if (cancelled) return
+        if (!result.ok) {
+          setLinkState(result.status || 'invalid')
+          return
+        }
+        setLinkLabel(result.label || '')
+        setLinkState('ready')
+      } catch {
+        if (!cancelled) setLinkState('invalid')
+      }
+    }
+    checkLink()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   function flushQuestionTiming() {
     const qId = timingQuestionIdRef.current
@@ -331,26 +366,33 @@ export default function QuizPage() {
     const finalAnswers = answersOverride ?? answers
     const timings = getTimingsSnapshot()
     try {
-      await addSubmission({
-        id: crypto.randomUUID(),
-        name: name.trim() || 'Anonymous',
-        email: email.trim(),
-        submittedAt: new Date().toISOString(),
-        endedEarly,
-        skippedAtQuestion,
-        examMix: { easy: 4, medium: 3, hard: 3 },
-        usedObjectBox: objectBoxChoiceRef.current,
-        answers: buildGradedAnswers(examQuestionsRef.current, finalAnswers, {
+      await addSubmission(
+        {
+          id: crypto.randomUUID(),
+          name: name.trim() || 'Anonymous',
+          email: email.trim(),
+          submittedAt: new Date().toISOString(),
           endedEarly,
           skippedAtQuestion,
-          timings,
-        }),
-        focusLeaves: {
-          count: leaves.length,
-          events: leaves,
+          examMix: { easy: 4, medium: 3, hard: 3 },
+          usedObjectBox: objectBoxChoiceRef.current,
+          answers: buildGradedAnswers(examQuestionsRef.current, finalAnswers, {
+            endedEarly,
+            skippedAtQuestion,
+            timings,
+          }),
+          focusLeaves: {
+            count: leaves.length,
+            events: leaves,
+          },
         },
-      })
+        token,
+      )
     } catch (err) {
+      if (err.status === 403) {
+        setLinkState(err.linkStatus || 'used')
+        return
+      }
       window.alert(
         err?.message ||
           'Could not save your answers to the server. Check your connection and try again.',
@@ -370,13 +412,20 @@ export default function QuizPage() {
     setPhase('closing')
   }
 
-  function handleStart(e) {
+  async function handleStart(e) {
     e.preventDefault()
     if (!isValidEmail(email)) {
       setStartError('Please enter a valid email address.')
       return
     }
     setStartError('')
+    try {
+      await startExamToken(token)
+    } catch (err) {
+      setLinkState(err.linkStatus || 'invalid')
+      setStartError(err.message || 'This invite link is no longer valid.')
+      return
+    }
     focusLeavesRef.current = []
     awaySinceRef.current = null
     lastLeaveAtRef.current = 0
@@ -439,26 +488,33 @@ export default function QuizPage() {
     const early = endedEarlyRef.current
     const skippedAt = skippedAtQuestionRef.current
     try {
-      await addSubmission({
-        id: crypto.randomUUID(),
-        name: name.trim() || 'Anonymous',
-        email: email.trim(),
-        submittedAt: new Date().toISOString(),
-        endedEarly: early,
-        skippedAtQuestion: skippedAt,
-        examMix: { easy: 4, medium: 3, hard: 3 },
-        usedObjectBox: objectBoxChoiceRef.current,
-        answers: buildGradedAnswers(allQuestions, answers, {
+      await addSubmission(
+        {
+          id: crypto.randomUUID(),
+          name: name.trim() || 'Anonymous',
+          email: email.trim(),
+          submittedAt: new Date().toISOString(),
           endedEarly: early,
           skippedAtQuestion: skippedAt,
-          timings,
-        }),
-        focusLeaves: {
-          count: leaves.length,
-          events: leaves,
+          examMix: { easy: 4, medium: 3, hard: 3 },
+          usedObjectBox: objectBoxChoiceRef.current,
+          answers: buildGradedAnswers(allQuestions, answers, {
+            endedEarly: early,
+            skippedAtQuestion: skippedAt,
+            timings,
+          }),
+          focusLeaves: {
+            count: leaves.length,
+            events: leaves,
+          },
         },
-      })
+        token,
+      )
     } catch (err) {
+      if (err.status === 403) {
+        setLinkState(err.linkStatus || 'used')
+        return
+      }
       window.alert(
         err?.message ||
           'Could not save your answers to the server. Check your connection and try again.',
@@ -466,6 +522,19 @@ export default function QuizPage() {
       return
     }
     setPhase('done')
+  }
+
+  function linkBlockedMessage() {
+    if (linkState === 'used') {
+      return 'This invite link has already been used and can no longer open the exam.'
+    }
+    if (linkState === 'revoked') {
+      return 'This invite link was revoked by the interviewer.'
+    }
+    if (linkState === 'expired') {
+      return 'This invite link has expired.'
+    }
+    return 'This invite link is invalid. Please ask your interviewer for a new one.'
   }
 
   function handleCodeChange(value) {
@@ -554,16 +623,42 @@ export default function QuizPage() {
     if (index > 0) setIndex((i) => i - 1)
   }
 
+  if (linkState === 'loading') {
+    return (
+      <div className="page">
+        <div className="panel start-panel">
+          <p className="eyebrow">Checking invite</p>
+          <h1 className="brand">Interview Q&apos;s</h1>
+          <p className="lead">Validating your one-time exam link…</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (linkState !== 'ready') {
+    return (
+      <div className="page">
+        <div className="panel start-panel">
+          <p className="eyebrow">Link unavailable</p>
+          <h1 className="brand">Interview Q&apos;s</h1>
+          <p className="lead">{linkBlockedMessage()}</p>
+        </div>
+      </div>
+    )
+  }
+
   if (phase === 'start') {
     return (
       <div className="page">
         <div className="panel start-panel">
-          <p className="eyebrow">Candidate assessment</p>
+          <p className="eyebrow">
+            {linkLabel ? `Invite · ${linkLabel}` : 'One-time invite'}
+          </p>
           <h1 className="brand">Interview Q&apos;s</h1>
           <p className="lead">
             You will get 10 questions: 4 easy, 3 medium, and 3 hard. After that
             we may ask about ObjectBox. On code questions, edit then continue —
-            Skip (unchanged) ends the exam.
+            Skip goes to wrap-up. This link expires after you finish.
           </p>
           <form className="start-form" onSubmit={handleStart}>
             <label htmlFor="candidate-email">Email (required)</label>
