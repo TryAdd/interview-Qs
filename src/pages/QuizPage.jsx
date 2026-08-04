@@ -158,6 +158,7 @@ export default function QuizPage() {
   const indexRef = useRef(0)
   const examQuestionsRef = useRef([])
   const objectBoxChoiceRef = useRef(null)
+  const skippedObjectBoxRef = useRef(false)
   const endedEarlyRef = useRef(false)
   const skippedAtQuestionRef = useRef(null)
   const focusLeavesRef = useRef([])
@@ -328,6 +329,8 @@ export default function QuizPage() {
     objectBoxChoice == null && index === CORE_EXAM_LENGTH - 1
   const nextLabel = isLast && !atEndOfCore ? 'Submit' : 'Next'
   const isCode = current?.type === 'code'
+  const isObjectBoxQuestion =
+    current?.topic === 'objectbox' || current?.difficulty === 'objectbox'
 
   const currentAnswer = answers[current?.id]
   const codeValue = isCode
@@ -376,6 +379,7 @@ export default function QuizPage() {
           skippedAtQuestion,
           examMix: { easy: 4, medium: 3, hard: 3 },
           usedObjectBox: objectBoxChoiceRef.current,
+          skippedObjectBox: skippedObjectBoxRef.current,
           answers: buildGradedAnswers(examQuestionsRef.current, finalAnswers, {
             endedEarly,
             skippedAtQuestion,
@@ -438,6 +442,7 @@ export default function QuizPage() {
     setExamQuestions(picked)
     setObjectBoxChoice(null)
     objectBoxChoiceRef.current = null
+    skippedObjectBoxRef.current = false
     setEndedEarly(false)
     endedEarlyRef.current = false
     setSkippedAtQuestion(null)
@@ -498,6 +503,7 @@ export default function QuizPage() {
           skippedAtQuestion: skippedAt,
           examMix: { easy: 4, medium: 3, hard: 3 },
           usedObjectBox: objectBoxChoiceRef.current,
+          skippedObjectBox: skippedObjectBoxRef.current,
           answers: buildGradedAnswers(allQuestions, answers, {
             endedEarly: early,
             skippedAtQuestion: skippedAt,
@@ -598,6 +604,18 @@ export default function QuizPage() {
     setIndex((i) => i + 1)
   }
 
+  function goToClosingAfterSkip() {
+    setEndedEarly(true)
+    endedEarlyRef.current = true
+    setSkippedAtQuestion(index + 1)
+    skippedAtQuestionRef.current = index + 1
+    if (objectBoxChoice == null) {
+      setObjectBoxChoice(false)
+      objectBoxChoiceRef.current = false
+    }
+    setPhase('closing')
+  }
+
   function handleSkip() {
     if (!isCode || codeEdited) return
     if (
@@ -607,16 +625,20 @@ export default function QuizPage() {
     ) {
       return
     }
-    setEndedEarly(true)
-    endedEarlyRef.current = true
-    setSkippedAtQuestion(index + 1)
-    skippedAtQuestionRef.current = index + 1
-    // If they never answered ObjectBox gate, mark as skipped/unknown
-    if (objectBoxChoice == null) {
-      setObjectBoxChoice(false)
-      objectBoxChoiceRef.current = false
+    goToClosingAfterSkip()
+  }
+
+  function handleSkipObjectBox() {
+    if (!isObjectBoxQuestion) return
+    if (
+      !window.confirm(
+        'Skip all ObjectBox questions? Use this if you pressed Yes by mistake or do not know ObjectBox. You will still answer the final wrap-up questions.',
+      )
+    ) {
+      return
     }
-    setPhase('closing')
+    skippedObjectBoxRef.current = true
+    goToClosingAfterSkip()
   }
 
   function handleBack() {
@@ -720,7 +742,8 @@ export default function QuizPage() {
           <p className="eyebrow">Almost done</p>
           <h1 className="brand">ObjectBox</h1>
           <p className="lead">
-            Have you worked with ObjectBox in Flutter?
+            Have you worked with ObjectBox in Flutter? If you press Yes by
+            mistake, you can skip the ObjectBox section later.
           </p>
           <div className="code-actions gate-actions">
             <button
@@ -899,21 +922,27 @@ export default function QuizPage() {
               <button
                 type="button"
                 className="btn btn-danger"
-                onClick={handleSkip}
+                onClick={isObjectBoxQuestion ? handleSkipObjectBox : handleSkip}
                 disabled={codeEdited}
                 title={
                   codeEdited
                     ? 'Clear your edits to skip, or press Next to continue'
-                    : 'Skip remaining questions, then answer wrap-up'
+                    : isObjectBoxQuestion
+                      ? 'Skip ObjectBox section if you do not know it'
+                      : 'Skip remaining questions, then answer wrap-up'
                 }
               >
-                Skip (to wrap-up)
+                {isObjectBoxQuestion
+                  ? 'Skip ObjectBox'
+                  : 'Skip (to wrap-up)'}
               </button>
             </div>
             <p className="code-hint">
               {codeEdited
                 ? 'Continue when ready — admin will see if the fix looks correct.'
-                : 'Edit the code to continue, or Skip to end the exam.'}
+                : isObjectBoxQuestion
+                  ? 'Edit to continue, or Skip ObjectBox if you do not know it.'
+                  : 'Edit the code to continue, or Skip to wrap-up.'}
             </p>
           </div>
         ) : (
@@ -943,18 +972,29 @@ export default function QuizPage() {
           >
             Back
           </button>
-          {isCode ? (
-            <span className="nav-hint">Use Next or Skip above</span>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleNext}
-              disabled={!canProceed}
-            >
-              {nextLabel}
-            </button>
-          )}
+          <div className="nav-row-right">
+            {isObjectBoxQuestion && !isCode ? (
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleSkipObjectBox}
+              >
+                Skip ObjectBox
+              </button>
+            ) : null}
+            {isCode ? (
+              <span className="nav-hint">Use Next or Skip above</span>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleNext}
+                disabled={!canProceed}
+              >
+                {nextLabel}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

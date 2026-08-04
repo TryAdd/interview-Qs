@@ -155,11 +155,13 @@ function SubmissionCard({ sub }) {
             </span>
             <span className="summary-stat">
               <em>ObjectBox</em>
-              {sub.usedObjectBox === true
-                ? 'Yes'
-                : sub.usedObjectBox === false
-                  ? 'No'
-                  : '—'}
+              {sub.skippedObjectBox
+                ? 'Skipped'
+                : sub.usedObjectBox === true
+                  ? 'Yes'
+                  : sub.usedObjectBox === false
+                    ? 'No'
+                    : '—'}
             </span>
             {sub.endedEarly ? (
               <span className="summary-stat is-alert">
