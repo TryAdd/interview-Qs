@@ -35,10 +35,16 @@ function getExplanation(answer) {
 }
 
 function buildGradedAnswers(examQuestions, answers, options = {}) {
-  const { endedEarly = false, skippedAtQuestion = null } = options
+  const {
+    endedEarly = false,
+    skippedAtQuestion = null,
+    timings = {},
+  } = options
   return examQuestions.map((q, i) => {
     const value = answers[q.id]
     const reached = !endedEarly || skippedAtQuestion == null || i + 1 <= skippedAtQuestion
+    const durationMs =
+      typeof timings[q.id] === 'number' ? timings[q.id] : null
 
     if (q.type === 'mcq') {
       if (!reached || value === undefined) {
@@ -53,6 +59,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
           correctIndex: q.correctIndex ?? null,
           isCorrect: null,
           skipped: !reached,
+          durationMs,
         }
       }
       const selectedIndex = value
@@ -69,6 +76,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
         correctIndex: q.correctIndex ?? null,
         isCorrect: q.ungraded ? null : selectedIndex === q.correctIndex,
         skipped: false,
+        durationMs,
       }
     }
 
@@ -86,6 +94,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
         explanation,
         isCorrect: reached ? passed : null,
         skipped: !reached || (reached && !passed && endedEarly && i + 1 === skippedAtQuestion),
+        durationMs,
       }
     }
 
@@ -99,6 +108,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
         answer: '',
         isCorrect: null,
         skipped: !reached,
+        durationMs,
       }
     }
 
@@ -111,6 +121,7 @@ function buildGradedAnswers(examQuestions, answers, options = {}) {
       answer: typeof value === 'string' ? value.trim() : '',
       isCorrect: null,
       skipped: false,
+      durationMs,
     }
   })
 }
@@ -129,6 +140,51 @@ export default function QuizPage() {
   const focusLeavesRef = useRef([])
   const awaySinceRef = useRef(null)
   const lastLeaveAtRef = useRef(0)
+  const questionDurationsRef = useRef({})
+  const timingQuestionIdRef = useRef(null)
+  const timingStartedAtRef = useRef(null)
+  const closingStartedAtRef = useRef(null)
+
+  function flushQuestionTiming() {
+    const qId = timingQuestionIdRef.current
+    const started = timingStartedAtRef.current
+    if (!qId || started == null) return
+    const elapsed = Math.max(0, Date.now() - started)
+    questionDurationsRef.current[qId] =
+      (questionDurationsRef.current[qId] || 0) + elapsed
+    timingQuestionIdRef.current = null
+    timingStartedAtRef.current = null
+  }
+
+  function startQuestionTiming(questionId) {
+    if (!questionId) return
+    if (
+      timingQuestionIdRef.current === questionId &&
+      timingStartedAtRef.current != null
+    ) {
+      return
+    }
+    flushQuestionTiming()
+    timingQuestionIdRef.current = questionId
+    timingStartedAtRef.current = Date.now()
+  }
+
+  function getTimingsSnapshot() {
+    flushQuestionTiming()
+    if (closingStartedAtRef.current != null) {
+      const closingMs = Math.max(0, Date.now() - closingStartedAtRef.current)
+      const share =
+        closingQuestions.length > 0
+          ? Math.round(closingMs / closingQuestions.length)
+          : closingMs
+      for (const q of closingQuestions) {
+        questionDurationsRef.current[q.id] =
+          (questionDurationsRef.current[q.id] || 0) + share
+      }
+      closingStartedAtRef.current = null
+    }
+    return { ...questionDurationsRef.current }
+  }
 
   useEffect(() => {
     indexRef.current = index
@@ -141,6 +197,19 @@ export default function QuizPage() {
   useEffect(() => {
     objectBoxChoiceRef.current = objectBoxChoice
   }, [objectBoxChoice])
+
+  // Silent per-question timing (not shown to candidate)
+  useEffect(() => {
+    if (phase === 'quiz') {
+      const q = examQuestions[index]
+      startQuestionTiming(q?.id)
+      return
+    }
+    flushQuestionTiming()
+    if (phase === 'closing') {
+      closingStartedAtRef.current = Date.now()
+    }
+  }, [phase, index, examQuestions])
 
   useEffect(() => {
     if (phase !== 'quiz') return
@@ -245,6 +314,7 @@ export default function QuizPage() {
     finalizeAwayTime()
     const leaves = focusLeavesRef.current
     const finalAnswers = answersOverride ?? answers
+    const timings = getTimingsSnapshot()
     try {
       await addSubmission({
         id: crypto.randomUUID(),
@@ -257,6 +327,7 @@ export default function QuizPage() {
         answers: buildGradedAnswers(examQuestionsRef.current, finalAnswers, {
           endedEarly,
           skippedAtQuestion,
+          timings,
         }),
         focusLeaves: {
           count: leaves.length,
@@ -288,6 +359,10 @@ export default function QuizPage() {
     focusLeavesRef.current = []
     awaySinceRef.current = null
     lastLeaveAtRef.current = 0
+    questionDurationsRef.current = {}
+    timingQuestionIdRef.current = null
+    timingStartedAtRef.current = null
+    closingStartedAtRef.current = null
     const picked = pickExamQuestions()
     examQuestionsRef.current = picked
     setExamQuestions(picked)
@@ -335,6 +410,7 @@ export default function QuizPage() {
     const allQuestions = [...examQuestionsRef.current, ...closingQuestions]
     finalizeAwayTime()
     const leaves = focusLeavesRef.current
+    const timings = getTimingsSnapshot()
     try {
       await addSubmission({
         id: crypto.randomUUID(),
@@ -347,6 +423,7 @@ export default function QuizPage() {
         answers: buildGradedAnswers(allQuestions, answers, {
           endedEarly: false,
           skippedAtQuestion: null,
+          timings,
         }),
         focusLeaves: {
           count: leaves.length,
@@ -497,6 +574,10 @@ export default function QuizPage() {
               focusLeavesRef.current = []
               awaySinceRef.current = null
               lastLeaveAtRef.current = 0
+              questionDurationsRef.current = {}
+              timingQuestionIdRef.current = null
+              timingStartedAtRef.current = null
+              closingStartedAtRef.current = null
             }}
           >
             Start over

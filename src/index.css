@@ -713,6 +713,18 @@ textarea {
   border-top: 1px solid var(--border);
 }
 
+.time-badge {
+  display: inline-block;
+  margin: 0 0 0 0.5rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(15, 107, 92, 0.1);
+  vertical-align: middle;
+}
+
 .answer-q {
   margin: 0 0 0.35rem;
   font-weight: 600;

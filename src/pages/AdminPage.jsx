@@ -61,6 +61,19 @@ function summarizeSubmission(sub) {
   const storeAnswer = answers.find((a) => a.questionId === 'close2')
   const deployNote = storeAnswer?.answer || null
 
+  const timedAnswers = answers.filter(
+    (a) => typeof a.durationMs === 'number' && a.durationMs >= 0,
+  )
+  const totalExamMs = timedAnswers.reduce((sum, a) => sum + a.durationMs, 0)
+  const avgMs =
+    timedAnswers.length > 0
+      ? Math.round(totalExamMs / timedAnswers.length)
+      : null
+  const slowest = timedAnswers.reduce(
+    (best, a) => (!best || a.durationMs > best.durationMs ? a : best),
+    null,
+  )
+
   return {
     answers,
     answeredCount: answered.length,
@@ -77,6 +90,9 @@ function summarizeSubmission(sub) {
     gradedCorrect,
     gradedTotal,
     deployNote,
+    totalExamMs,
+    avgMs,
+    slowest,
   }
 }
 
@@ -119,6 +135,14 @@ function SubmissionCard({ sub }) {
               {stats.leaveCount > 0
                 ? `${stats.leaveCount}× · ${formatDuration(stats.totalAwayMs)}`
                 : 'None'}
+            </span>
+            <span className="summary-stat">
+              <em>Total time</em>
+              {stats.totalExamMs > 0 ? formatDuration(stats.totalExamMs) : '—'}
+            </span>
+            <span className="summary-stat">
+              <em>Avg / Q</em>
+              {stats.avgMs != null ? formatDuration(stats.avgMs) : '—'}
             </span>
             <span className="summary-stat">
               <em>ObjectBox</em>
@@ -184,6 +208,11 @@ function SubmissionCard({ sub }) {
                       className={`difficulty-badge difficulty-${a.difficulty}`}
                     >
                       {a.difficulty}
+                    </span>
+                  ) : null}
+                  {typeof a.durationMs === 'number' ? (
+                    <span className="time-badge">
+                      {formatDuration(a.durationMs)}
                     </span>
                   ) : null}
                 </p>
