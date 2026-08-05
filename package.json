@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:api": "wrangler dev --port 8787",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",

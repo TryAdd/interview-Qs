@@ -1,29 +1,52 @@
 const API_BASE = ''
 
-function adminHeaders(password) {
+function adminHeaders(name, password) {
   return {
     'Content-Type': 'application/json',
+    'X-Admin-Name': name || '',
     'X-Admin-Password': password || '',
   }
 }
 
-async function apiGetSubmissions(password) {
-  const res = await fetch(`${API_BASE}/api/submissions`, {
-    headers: adminHeaders(password),
-  })
-  if (res.status === 401) {
-    const err = new Error('Unauthorized')
-    err.status = 401
-    throw err
-  }
-  if (!res.ok) {
-    throw new Error(`Failed to load submissions (${res.status})`)
-  }
-  const data = await res.json()
-  return Array.isArray(data.submissions) ? data.submissions : []
+function authError(res, data = {}) {
+  const err = new Error(
+    data.error ||
+      (res.status === 403 ? 'Forbidden' : 'Unauthorized'),
+  )
+  err.status = res.status
+  err.code = data.code || null
+  return err
 }
 
-async function apiAddSubmission(submission, examToken) {
+async function parseJson(res) {
+  return res.json().catch(() => ({}))
+}
+
+export async function loginAdmin(name, password) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, password }),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
+}
+
+export async function getSubmissions(name, password) {
+  const res = await fetch(`${API_BASE}/api/submissions`, {
+    headers: adminHeaders(name, password),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return {
+    submissions: Array.isArray(data.submissions) ? data.submissions : [],
+    role: data.role,
+    name: data.name,
+  }
+}
+
+export async function addSubmission(submission, examToken) {
   const res = await fetch(`${API_BASE}/api/submissions`, {
     method: 'POST',
     headers: {
@@ -32,8 +55,8 @@ async function apiAddSubmission(submission, examToken) {
     },
     body: JSON.stringify({ ...submission, examToken }),
   })
+  const data = await parseJson(res)
   if (res.status === 403) {
-    const data = await res.json().catch(() => ({}))
     const err = new Error(data.error || 'Exam link is no longer valid')
     err.status = 403
     err.linkStatus = data.status
@@ -42,95 +65,159 @@ async function apiAddSubmission(submission, examToken) {
   if (!res.ok) {
     throw new Error(`Failed to save submission (${res.status})`)
   }
-  return res.json()
+  return data
 }
 
-async function apiClearSubmissions(password) {
+export async function clearSubmissions(name, password) {
   const res = await fetch(`${API_BASE}/api/submissions`, {
     method: 'DELETE',
-    headers: adminHeaders(password),
+    headers: adminHeaders(name, password),
   })
-  if (res.status === 401) {
-    const err = new Error('Unauthorized')
-    err.status = 401
-    throw err
-  }
-  if (!res.ok) {
-    throw new Error(`Failed to clear submissions (${res.status})`)
-  }
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
 }
 
-export async function getSubmissions(password) {
-  return apiGetSubmissions(password)
-}
-
-export async function addSubmission(submission, examToken) {
-  await apiAddSubmission(submission, examToken)
-  return submission
-}
-
-export async function clearSubmissions(password) {
-  await apiClearSubmissions(password)
-}
-
-export async function getExamLinks(password) {
+export async function getExamLinks(name, password) {
   const res = await fetch(`${API_BASE}/api/links`, {
-    headers: adminHeaders(password),
+    headers: adminHeaders(name, password),
   })
-  if (res.status === 401) {
-    const err = new Error('Unauthorized')
-    err.status = 401
-    throw err
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return {
+    links: Array.isArray(data.links) ? data.links : [],
+    role: data.role,
+    name: data.name,
   }
-  if (!res.ok) throw new Error(`Failed to load links (${res.status})`)
-  const data = await res.json()
-  return Array.isArray(data.links) ? data.links : []
 }
 
-export async function createExamLink(password, { label, expiresInHours } = {}) {
+export async function createExamLink(name, password, { label, expiresInHours } = {}) {
   const res = await fetch(`${API_BASE}/api/links`, {
     method: 'POST',
-    headers: adminHeaders(password),
+    headers: adminHeaders(name, password),
     body: JSON.stringify({ label, expiresInHours }),
   })
-  if (res.status === 401) {
-    const err = new Error('Unauthorized')
-    err.status = 401
-    throw err
-  }
-  if (!res.ok) throw new Error(`Failed to create link (${res.status})`)
-  return res.json()
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
 }
 
-export async function revokeExamLink(password, token) {
+export async function revokeExamLink(name, password, token) {
   const res = await fetch(
     `${API_BASE}/api/links/${encodeURIComponent(token)}`,
     {
       method: 'DELETE',
-      headers: adminHeaders(password),
+      headers: adminHeaders(name, password),
     },
   )
-  if (res.status === 401) {
-    const err = new Error('Unauthorized')
-    err.status = 401
-    throw err
-  }
-  if (!res.ok) throw new Error(`Failed to revoke link (${res.status})`)
-  return res.json()
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
 }
 
-export async function clearEndedExamLinks(password) {
+export async function clearEndedExamLinks(name, password) {
   const res = await fetch(`${API_BASE}/api/links/cleanup`, {
     method: 'DELETE',
-    headers: adminHeaders(password),
+    headers: adminHeaders(name, password),
   })
-  if (res.status === 401) {
-    const err = new Error('Unauthorized')
-    err.status = 401
-    throw err
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
+}
+
+export async function getAdmins(name, password) {
+  const res = await fetch(`${API_BASE}/api/admins`, {
+    headers: adminHeaders(name, password),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return Array.isArray(data.admins) ? data.admins : []
+}
+
+export async function createAdmin(name, password, { adminName, adminPassword }) {
+  const res = await fetch(`${API_BASE}/api/admins`, {
+    method: 'POST',
+    headers: adminHeaders(name, password),
+    body: JSON.stringify({ name: adminName, password: adminPassword }),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
+}
+
+export async function setAdminEnabled(name, password, adminId, enabled) {
+  const res = await fetch(
+    `${API_BASE}/api/admins/${encodeURIComponent(adminId)}`,
+    {
+      method: 'PATCH',
+      headers: adminHeaders(name, password),
+      body: JSON.stringify({ enabled }),
+    },
+  )
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
+}
+
+export async function updateAdmin(
+  name,
+  password,
+  adminId,
+  { adminName, adminPassword } = {},
+) {
+  const body = {}
+  if (typeof adminName === 'string') body.name = adminName
+  if (typeof adminPassword === 'string' && adminPassword.length > 0) {
+    body.password = adminPassword
   }
-  if (!res.ok) throw new Error(`Failed to clear ended links (${res.status})`)
-  return res.json()
+  const res = await fetch(
+    `${API_BASE}/api/admins/${encodeURIComponent(adminId)}`,
+    {
+      method: 'PATCH',
+      headers: adminHeaders(name, password),
+      body: JSON.stringify(body),
+    },
+  )
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
+}
+
+export async function getAuditLog(name, password) {
+  const res = await fetch(`${API_BASE}/api/audit`, {
+    headers: adminHeaders(name, password),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return Array.isArray(data.audit) ? data.audit : []
+}
+
+export async function clearAuditLog(name, password) {
+  const res = await fetch(`${API_BASE}/api/audit`, {
+    method: 'DELETE',
+    headers: adminHeaders(name, password),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return Array.isArray(data.audit) ? data.audit : []
+}
+
+export async function getQuestionBank() {
+  const res = await fetch(`${API_BASE}/api/questions`)
+  const data = await parseJson(res)
+  if (!res.ok) throw new Error(data.error || 'Failed to load questions')
+  return data
+}
+
+export async function saveQuestionBank(name, password, bank) {
+  const res = await fetch(`${API_BASE}/api/questions`, {
+    method: 'PUT',
+    headers: adminHeaders(name, password),
+    body: JSON.stringify(bank),
+  })
+  const data = await parseJson(res)
+  if (!res.ok) throw authError(res, data)
+  return data
 }
 
 export async function validateExamToken(token) {

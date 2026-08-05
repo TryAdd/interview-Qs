@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
-  closingQuestions,
+  closingQuestions as defaultClosing,
   isCodeCorrect,
-  objectBoxQuestions,
+  objectBoxQuestions as defaultObjectBox,
+  questions as defaultCore,
   pickExamQuestions,
 } from '../data/questions'
+import { reviveBank } from '../utils/questionBank'
 import {
   addSubmission,
+  getQuestionBank,
   startExamToken,
   validateExamToken,
 } from '../utils/storage'
@@ -154,6 +157,9 @@ export default function QuizPage() {
   const [objectBoxChoice, setObjectBoxChoice] = useState(null) // null | true | false
   const [endedEarly, setEndedEarly] = useState(false)
   const [skippedAtQuestion, setSkippedAtQuestion] = useState(null)
+  const [corePool, setCorePool] = useState(defaultCore)
+  const [objectBoxQuestions, setObjectBoxQuestions] = useState(defaultObjectBox)
+  const [closingQuestions, setClosingQuestions] = useState(defaultClosing)
 
   const indexRef = useRef(0)
   const examQuestionsRef = useRef([])
@@ -168,6 +174,9 @@ export default function QuizPage() {
   const timingQuestionIdRef = useRef(null)
   const timingStartedAtRef = useRef(null)
   const closingStartedAtRef = useRef(null)
+  const corePoolRef = useRef(defaultCore)
+  const objectBoxQuestionsRef = useRef(defaultObjectBox)
+  const closingQuestionsRef = useRef(defaultClosing)
 
   useEffect(() => {
     let cancelled = false
@@ -178,8 +187,26 @@ export default function QuizPage() {
       }
       setLinkState('loading')
       try {
-        const result = await validateExamToken(token)
+        const [result, bankData] = await Promise.all([
+          validateExamToken(token),
+          getQuestionBank().catch(() => null),
+        ])
         if (cancelled) return
+        if (bankData?.bank) {
+          const revived = reviveBank(bankData.bank)
+          if (revived.questions.length) {
+            setCorePool(revived.questions)
+            corePoolRef.current = revived.questions
+          }
+          if (revived.objectBoxQuestions.length) {
+            setObjectBoxQuestions(revived.objectBoxQuestions)
+            objectBoxQuestionsRef.current = revived.objectBoxQuestions
+          }
+          if (revived.closingQuestions.length) {
+            setClosingQuestions(revived.closingQuestions)
+            closingQuestionsRef.current = revived.closingQuestions
+          }
+        }
         if (!result.ok) {
           setLinkState(result.status || 'invalid')
           return
@@ -224,11 +251,10 @@ export default function QuizPage() {
     flushQuestionTiming()
     if (closingStartedAtRef.current != null) {
       const closingMs = Math.max(0, Date.now() - closingStartedAtRef.current)
+      const closing = closingQuestionsRef.current
       const share =
-        closingQuestions.length > 0
-          ? Math.round(closingMs / closingQuestions.length)
-          : closingMs
-      for (const q of closingQuestions) {
+        closing.length > 0 ? Math.round(closingMs / closing.length) : closingMs
+      for (const q of closing) {
         questionDurationsRef.current[q.id] =
           (questionDurationsRef.current[q.id] || 0) + share
       }
@@ -437,7 +463,7 @@ export default function QuizPage() {
     timingQuestionIdRef.current = null
     timingStartedAtRef.current = null
     closingStartedAtRef.current = null
-    const picked = pickExamQuestions()
+    const picked = pickExamQuestions(undefined, corePoolRef.current)
     examQuestionsRef.current = picked
     setExamQuestions(picked)
     setObjectBoxChoice(null)
@@ -453,7 +479,10 @@ export default function QuizPage() {
   }
 
   function handleObjectBoxYes() {
-    const next = [...examQuestionsRef.current, ...objectBoxQuestions]
+    const next = [
+      ...examQuestionsRef.current,
+      ...objectBoxQuestionsRef.current,
+    ]
     examQuestionsRef.current = next
     setExamQuestions(next)
     setObjectBoxChoice(true)
@@ -486,7 +515,10 @@ export default function QuizPage() {
 
   async function handleClosingSubmit() {
     if (!closingCanSubmit()) return
-    const allQuestions = [...examQuestionsRef.current, ...closingQuestions]
+    const allQuestions = [
+      ...examQuestionsRef.current,
+      ...closingQuestionsRef.current,
+    ]
     finalizeAwayTime()
     const leaves = focusLeavesRef.current
     const timings = getTimingsSnapshot()

@@ -1,5 +1,3 @@
-export const ADMIN_PASSWORD = "Gits2026";
-
 /**
  * Interview questions ordered Easy → Medium → Hard.
  * `difficulty`: "easy" | "medium" | "hard"
@@ -617,13 +615,24 @@ export function pickExamQuestions(counts = EXAM_COUNTS, pool = questions) {
   return picked;
 }
 
+function asRegExp(p) {
+  if (p instanceof RegExp) return p;
+  if (typeof p === "string" && p.trim()) return new RegExp(p, "i");
+  if (p && typeof p.source === "string") {
+    return new RegExp(p.source, p.flags || "i");
+  }
+  return null;
+}
+
 /** Returns true if edited code looks like a valid fix for the question. */
 export function isCodeCorrect(question, code) {
   if (!question?.checks || typeof code !== "string") return false;
   const trimmed = code.trim();
-  if (!trimmed || trimmed === question.code.trim()) return false;
+  if (!trimmed || trimmed === (question.code || "").trim()) return false;
 
-  const { allOf = [], anyOf = [], noneOf = [] } = question.checks;
+  const allOf = (question.checks.allOf || []).map(asRegExp).filter(Boolean);
+  const anyOf = (question.checks.anyOf || []).map(asRegExp).filter(Boolean);
+  const noneOf = (question.checks.noneOf || []).map(asRegExp).filter(Boolean);
 
   const passAll = allOf.every((re) => re.test(trimmed));
   const passAny = anyOf.length === 0 || anyOf.some((re) => re.test(trimmed));

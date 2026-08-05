@@ -20,6 +20,8 @@ binding = "SUBMISSIONS"
 id = "6d5195a6d7844b989b752c4f33cec098"
 preview_id = "6d5195a6d7844b989b752c4f33cec098"
 
-# Must match the password you use on /admin
-[vars]
-ADMIN_PASSWORD = "Gits2026"
+# Secrets (not committed):
+#   Local: .dev.vars with SUPER_ADMIN_PASSWORD (or ADMIN_PASSWORD fallback)
+#   Prod:  npx wrangler secret put SUPER_ADMIN_PASSWORD
+# Super admin UI: /superadmin (password-only; account name is superadmin)
+# Regular admin UI: /admin

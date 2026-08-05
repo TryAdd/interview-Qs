@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars (gitignored) and set a real value locally.
+# Never commit real passwords.
+# Super admin login name: superadmin
+SUPER_ADMIN_PASSWORD=

@@ -13,6 +13,13 @@ dist-ssr
 *.local
 .wrangler
 
+# Secrets (never commit)
+.dev.vars
+.env
+.env.*
+!.env.example
+!.dev.vars.example
+
 # Local secrets / quiz data
 # src/data/questions.js
 # src/pages/AdminPage.jsx
