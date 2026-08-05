@@ -204,7 +204,13 @@ function SubmissionCard({ sub, isSuper }) {
                     ? 'No'
                     : '—'}
             </span>
-            {sub.endedEarly ? (
+            {sub.endedReason === 'link-expired' || sub.submittedAfterExpiry ? (
+              <span className="summary-stat is-alert">
+                <em>Status</em>
+                Link expired
+                {sub.skippedAtQuestion ? ` (Q${sub.skippedAtQuestion})` : ''}
+              </span>
+            ) : sub.endedEarly ? (
               <span className="summary-stat is-alert">
                 <em>Status</em>
                 Ended early (Q{sub.skippedAtQuestion})

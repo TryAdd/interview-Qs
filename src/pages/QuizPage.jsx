@@ -147,6 +147,7 @@ export default function QuizPage() {
   const { token } = useParams()
   const [linkState, setLinkState] = useState('loading') // loading | ready | invalid | used | revoked | expired
   const [linkLabel, setLinkLabel] = useState('')
+  const [linkExpiresAt, setLinkExpiresAt] = useState(null)
   const [phase, setPhase] = useState('start')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -157,6 +158,7 @@ export default function QuizPage() {
   const [objectBoxChoice, setObjectBoxChoice] = useState(null) // null | true | false
   const [endedEarly, setEndedEarly] = useState(false)
   const [skippedAtQuestion, setSkippedAtQuestion] = useState(null)
+  const [endedReason, setEndedReason] = useState(null)
   const [corePool, setCorePool] = useState(defaultCore)
   const [objectBoxQuestions, setObjectBoxQuestions] = useState(defaultObjectBox)
   const [closingQuestions, setClosingQuestions] = useState(defaultClosing)
@@ -167,6 +169,12 @@ export default function QuizPage() {
   const skippedObjectBoxRef = useRef(false)
   const endedEarlyRef = useRef(false)
   const skippedAtQuestionRef = useRef(null)
+  const answersRef = useRef({})
+  const phaseRef = useRef('start')
+  const nameRef = useRef('')
+  const emailRef = useRef('')
+  const submittingRef = useRef(false)
+  const endedReasonRef = useRef(null)
   const focusLeavesRef = useRef([])
   const awaySinceRef = useRef(null)
   const lastLeaveAtRef = useRef(0)
@@ -212,6 +220,7 @@ export default function QuizPage() {
           return
         }
         setLinkLabel(result.label || '')
+        setLinkExpiresAt(result.expiresAt || null)
         setLinkState('ready')
       } catch {
         if (!cancelled) setLinkState('invalid')
@@ -222,6 +231,22 @@ export default function QuizPage() {
       cancelled = true
     }
   }, [token])
+
+  useEffect(() => {
+    answersRef.current = answers
+  }, [answers])
+
+  useEffect(() => {
+    phaseRef.current = phase
+  }, [phase])
+
+  useEffect(() => {
+    nameRef.current = name
+  }, [name])
+
+  useEffect(() => {
+    emailRef.current = email
+  }, [email])
 
   function flushQuestionTiming() {
     const qId = timingQuestionIdRef.current
@@ -389,24 +414,32 @@ export default function QuizPage() {
     endedEarly = false,
     skippedAtQuestion = null,
     answersOverride = null,
+    includeClosing = false,
+    endedReason: reason = null,
   } = {}) {
+    if (submittingRef.current) return false
+    submittingRef.current = true
     finalizeAwayTime()
     const leaves = focusLeavesRef.current
-    const finalAnswers = answersOverride ?? answers
+    const finalAnswers = answersOverride ?? answersRef.current
     const timings = getTimingsSnapshot()
+    const questionSet = includeClosing
+      ? [...examQuestionsRef.current, ...closingQuestionsRef.current]
+      : examQuestionsRef.current
     try {
       await addSubmission(
         {
           id: crypto.randomUUID(),
-          name: name.trim() || 'Anonymous',
-          email: email.trim(),
+          name: (nameRef.current || name).trim() || 'Anonymous',
+          email: (emailRef.current || email).trim(),
           submittedAt: new Date().toISOString(),
           endedEarly,
           skippedAtQuestion,
+          endedReason: reason,
           examMix: { easy: 4, medium: 3, hard: 3 },
           usedObjectBox: objectBoxChoiceRef.current,
           skippedObjectBox: skippedObjectBoxRef.current,
-          answers: buildGradedAnswers(examQuestionsRef.current, finalAnswers, {
+          answers: buildGradedAnswers(questionSet, finalAnswers, {
             endedEarly,
             skippedAtQuestion,
             timings,
@@ -419,17 +452,48 @@ export default function QuizPage() {
         token,
       )
     } catch (err) {
+      submittingRef.current = false
       if (err.status === 403) {
         setLinkState(err.linkStatus || 'used')
-        return
+        return false
       }
       window.alert(
         err?.message ||
           'Could not save your answers to the server. Check your connection and try again.',
       )
+      return false
+    }
+    endedReasonRef.current = reason
+    setEndedReason(reason)
+    setPhase('done')
+    return true
+  }
+
+  async function autoSubmitOnLinkExpiry() {
+    const currentPhase = phaseRef.current
+    if (
+      currentPhase === 'done' ||
+      currentPhase === 'start' ||
+      currentPhase === 'loading' ||
+      submittingRef.current
+    ) {
       return
     }
-    setPhase('done')
+
+    const qIndex = indexRef.current
+    const skippedAt = qIndex + 1
+    endedEarlyRef.current = true
+    skippedAtQuestionRef.current = skippedAt
+    setEndedEarly(true)
+    setSkippedAtQuestion(skippedAt)
+
+    await submitExam({
+      endedEarly: true,
+      skippedAtQuestion: skippedAt,
+      answersOverride: answersRef.current,
+      includeClosing: currentPhase === 'closing',
+      endedReason: 'link-expired',
+    })
   }
 
   /** After core 10: ObjectBox gate. After ObjectBox (or No): closing screen. */
@@ -450,7 +514,8 @@ export default function QuizPage() {
     }
     setStartError('')
     try {
-      await startExamToken(token)
+      const started = await startExamToken(token)
+      if (started?.expiresAt) setLinkExpiresAt(started.expiresAt)
     } catch (err) {
       setLinkState(err.linkStatus || 'invalid')
       setStartError(err.message || 'This invite link is no longer valid.')
@@ -463,6 +528,9 @@ export default function QuizPage() {
     timingQuestionIdRef.current = null
     timingStartedAtRef.current = null
     closingStartedAtRef.current = null
+    submittingRef.current = false
+    endedReasonRef.current = null
+    setEndedReason(null)
     const picked = pickExamQuestions(undefined, corePoolRef.current)
     examQuestionsRef.current = picked
     setExamQuestions(picked)
@@ -477,6 +545,28 @@ export default function QuizPage() {
     setIndex(0)
     setAnswers({})
   }
+
+  // When the invite link expires mid-exam, auto-submit whatever was answered.
+  useEffect(() => {
+    if (!linkExpiresAt) return
+    if (phase === 'start' || phase === 'done' || linkState !== 'ready') return
+
+    const expiresMs = new Date(linkExpiresAt).getTime()
+    if (!Number.isFinite(expiresMs)) return
+
+    const remaining = expiresMs - Date.now()
+    if (remaining <= 0) {
+      autoSubmitOnLinkExpiry()
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      autoSubmitOnLinkExpiry()
+    }, remaining)
+
+    return () => window.clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkExpiresAt, phase, linkState])
 
   function handleObjectBoxYes() {
     const next = [
@@ -515,51 +605,13 @@ export default function QuizPage() {
 
   async function handleClosingSubmit() {
     if (!closingCanSubmit()) return
-    const allQuestions = [
-      ...examQuestionsRef.current,
-      ...closingQuestionsRef.current,
-    ]
-    finalizeAwayTime()
-    const leaves = focusLeavesRef.current
-    const timings = getTimingsSnapshot()
-    const early = endedEarlyRef.current
-    const skippedAt = skippedAtQuestionRef.current
-    try {
-      await addSubmission(
-        {
-          id: crypto.randomUUID(),
-          name: name.trim() || 'Anonymous',
-          email: email.trim(),
-          submittedAt: new Date().toISOString(),
-          endedEarly: early,
-          skippedAtQuestion: skippedAt,
-          examMix: { easy: 4, medium: 3, hard: 3 },
-          usedObjectBox: objectBoxChoiceRef.current,
-          skippedObjectBox: skippedObjectBoxRef.current,
-          answers: buildGradedAnswers(allQuestions, answers, {
-            endedEarly: early,
-            skippedAtQuestion: skippedAt,
-            timings,
-          }),
-          focusLeaves: {
-            count: leaves.length,
-            events: leaves,
-          },
-        },
-        token,
-      )
-    } catch (err) {
-      if (err.status === 403) {
-        setLinkState(err.linkStatus || 'used')
-        return
-      }
-      window.alert(
-        err?.message ||
-          'Could not save your answers to the server. Check your connection and try again.',
-      )
-      return
-    }
-    setPhase('done')
+    await submitExam({
+      endedEarly: endedEarlyRef.current,
+      skippedAtQuestion: skippedAtQuestionRef.current,
+      answersOverride: answers,
+      includeClosing: true,
+      endedReason: endedEarlyRef.current ? 'skipped' : null,
+    })
   }
 
   function linkBlockedMessage() {
@@ -760,7 +812,9 @@ export default function QuizPage() {
           <h1 className="brand">Interview Q&apos;s</h1>
           <h2 className="done-title">Thank you</h2>
           <p className="lead">
-            Your responses have been submitted. You may close this page.
+            {endedReason === 'link-expired'
+              ? 'The invite link expired, so your progress so far was submitted automatically. You may close this page.'
+              : 'Your responses have been submitted. You may close this page.'}
           </p>
         </div>
       </div>

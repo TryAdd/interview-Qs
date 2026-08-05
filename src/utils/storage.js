@@ -229,6 +229,7 @@ export async function validateExamToken(token) {
     ok: Boolean(data.ok),
     status: data.status || (res.ok ? 'unused' : 'invalid'),
     label: data.label || '',
+    expiresAt: data.expiresAt || null,
   }
 }
 

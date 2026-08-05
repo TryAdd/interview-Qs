@@ -649,6 +649,7 @@ export default {
         ok: true,
         status,
         label: link.label,
+        expiresAt: link.expiresAt || null,
       })
     }
 
@@ -670,7 +671,11 @@ export default {
         link.startedAt = new Date().toISOString()
         await writeLinks(env, links)
       }
-      return json({ ok: true, status: link.status })
+      return json({
+        ok: true,
+        status: link.status,
+        expiresAt: link.expiresAt || null,
+      })
     }
 
     // ── Submissions ─────────────────────────────────────
@@ -711,14 +716,31 @@ export default {
 
         const links = await readLinks(env)
         const link = findLink(links, examToken)
-        const status = publicLinkStatus(link)
-        if (
-          status === 'invalid' ||
-          status === 'used' ||
-          status === 'revoked' ||
-          status === 'expired'
-        ) {
-          return json({ error: 'Exam link is not valid', status }, 403)
+        if (!link) {
+          return json({ error: 'Exam link is not valid', status: 'invalid' }, 403)
+        }
+        if (link.status === 'used') {
+          return json({ error: 'Exam link is not valid', status: 'used' }, 403)
+        }
+        if (link.status === 'revoked') {
+          return json(
+            { error: 'Exam link is not valid', status: 'revoked' },
+            403,
+          )
+        }
+        // Allow submit after expiry if the exam was already started,
+        // so partial progress can still be saved.
+        if (link.status === 'unused' && linkIsExpired(link)) {
+          return json(
+            { error: 'Exam link is not valid', status: 'expired' },
+            403,
+          )
+        }
+        if (link.status !== 'started' && link.status !== 'unused') {
+          return json(
+            { error: 'Exam link is not valid', status: 'invalid' },
+            403,
+          )
         }
 
         const stored = {
@@ -727,6 +749,9 @@ export default {
           examToken: `${examToken.slice(0, 8)}…`,
           deletedAt: null,
           deletedBy: null,
+          submittedAfterExpiry: Boolean(
+            body.endedReason === 'link-expired' || linkIsExpired(link),
+          ),
         }
 
         const submissions = await readSubmissions(env)
